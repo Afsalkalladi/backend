@@ -7,7 +7,7 @@ from django.utils import timezone
 from .models import Event, EventRegistration, EventSpeaker, EventSchedule, EventFeedback
 from .serializers import (
     EventSerializer, EventListSerializer, EventRegistrationSerializer,
-    EventSpeakerSerializer, EventScheduleSerializer, EventFeedbackSerializer
+    EventRegistrationCreateSerializer, EventSpeakerSerializer, EventScheduleSerializer, EventFeedbackSerializer
 )
 
 
@@ -81,8 +81,16 @@ class EventViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Check if user already registered (by email)
+        email = request.data.get('email')
+        if email and EventRegistration.objects.filter(event=event, email=email).exists():
+            return Response(
+                {'error': 'You have already registered for this event'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         # Create registration
-        serializer = EventRegistrationSerializer(data=request.data)
+        serializer = EventRegistrationCreateSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(event=event)
             return Response(serializer.data, status=status.HTTP_201_CREATED)

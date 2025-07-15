@@ -142,3 +142,22 @@ class EventFeedbackSerializer(serializers.ModelSerializer):
         if registration and not registration.attended:
             raise serializers.ValidationError("Feedback can only be submitted by participants who attended the event.")
         return data
+
+
+class EventRegistrationCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating event registrations (event field is set automatically)"""
+    
+    class Meta:
+        model = EventRegistration
+        fields = [
+            'name', 'email', 'mobile_number',
+            'institution', 'department', 'year_of_study',
+            'organization', 'designation',
+            'dietary_requirements', 'special_needs'
+        ]
+    
+    def validate_email(self, value):
+        """Ensure email is unique per event"""
+        # We can't check here since we don't have access to the event yet
+        # This validation will be done in the view
+        return value

@@ -39,7 +39,7 @@ class EventAdmin(admin.ModelAdmin):
         'payment_required', 'created_by'
     ]
     search_fields = ['title', 'description', 'location', 'venue']
-    readonly_fields = ['created_at', 'updated_at', 'registration_count', 'spots_remaining']
+    readonly_fields = ['created_at', 'updated_at', 'spots_remaining']
     inlines = [EventSpeakerInline, EventScheduleInline]
     actions = ['mark_as_featured', 'mark_as_published', 'mark_as_cancelled', 'export_registrations_csv']
     
@@ -54,7 +54,7 @@ class EventAdmin(admin.ModelAdmin):
             'fields': ('location', 'venue', 'address', 'is_online', 'meeting_link')
         }),
         ('Registration Settings', {
-            'fields': ('registration_required', 'max_participants', 'registration_count', 'spots_remaining')
+            'fields': ('registration_required', 'max_participants', 'spots_remaining')
         }),
         ('Payment Settings', {
             'fields': ('registration_fee', 'payment_required', 'payment_qr_code', 'payment_upi_id', 'payment_instructions')
@@ -76,7 +76,7 @@ class EventAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('created_by').annotate(
-            registration_count=Count('registrations')
+            registration_count_annotation=Count('registrations')
         )
     
     def start_date_formatted(self, obj):
@@ -100,7 +100,11 @@ class EventAdmin(admin.ModelAdmin):
     is_featured_indicator.short_description = 'Featured'
     
     def registration_count(self, obj):
-        count = obj.registrations.count()
+        # Use annotation if available, otherwise use model property
+        count = getattr(obj, 'registration_count_annotation', None)
+        if count is None:
+            count = obj.registration_count
+        
         if obj.max_participants:
             return f"{count}/{obj.max_participants}"
         return str(count)

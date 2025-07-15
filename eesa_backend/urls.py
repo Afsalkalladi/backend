@@ -40,14 +40,14 @@ def api_root(request):
             'core': '/api/core/',
             'alumni': '/api/core/alumni/',
             'team-members': '/api/core/team-members/',
-            'admin': '/eesa-staff-portal/',
+            'admin': '/eesa/',
         }
     })
 
 urlpatterns = [
     path('', api_root, name='api_root'),
     path('api/', api_root, name='api_root_alt'),
-    path('eesa-staff-portal/', admin.site.urls),  # Custom admin URL
+    path('eesa/', admin.site.urls),  # Custom admin URL
     
     # API endpoints
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

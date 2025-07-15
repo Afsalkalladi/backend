@@ -1,23 +1,31 @@
-# 🔰 EESA Backend - Phase 1
+# EESA Backend API
 
-**Electrical Engineering Students Association (EESA) Backend API** - A comprehensive Django REST API backend for CUSAT EESA website with role-based access control, note sharing, project portal, and event management.
+**Electronics Engineering Students Association (EESA) Backend** - A production-ready Django REST API backend for the EESA platform with comprehensive features for academic resource management, student information, and event management.
 
-## 🚀 Features
+## 🚀 Production Features
 
-### 👥 User Management & Authentication
+### � Security & Authentication
+- JWT-based authentication with role-based access control
+- HTTPS enforcement and security headers
+- CORS configuration for frontend integration
+- SQL injection and XSS protection
 
-- **5 User Roles**: Student, Teacher, Technical Head, Admin, Alumni
-- **JWT Authentication** with access & refresh tokens
-- **Role-based permissions** for all endpoints
-- Custom user model with additional fields for alumni
+### 📚 Core Modules
+- **User Management**: Multi-role authentication system
+- **Academic Resources**: Notes, textbooks, and PYQ management
+- **Student Information**: Complete academic records
+- **Project Showcase**: Student and faculty projects
+- **Event Management**: Campus events and registrations
+- **Gallery**: Photo and media management
+- **Placement Records**: Job placement tracking
 
-### 📚 Academic Structure
+## 🛠️ Tech Stack
 
-- **Hierarchical Subject System**: Scheme → Semester → Subject
-- **Student Management**: Full academic information with auto-calculated year of study
-- **Bulk Operations**: Semester promotion with auto year-of-study updates
-
-### 📝 Note Sharing System
+- **Backend**: Django 5.1.4 + Django REST Framework
+- **Database**: PostgreSQL (Production) / SQLite (Development)
+- **Authentication**: JWT with Simple JWT
+- **Server**: Gunicorn + WhiteNoise
+- **Security**: CORS, CSRF, XSS protection
 
 - Students upload notes for specific subjects
 - **Multi-level Approval System**:
