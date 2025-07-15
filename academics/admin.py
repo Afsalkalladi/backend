@@ -1,11 +1,12 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
-from .models import Scheme, Subject, AcademicCategory, AcademicResource
+from .models import Scheme, Subject, AcademicCategory, AcademicResource, Note
+from accounts.admin_base import PermissionRestrictedAdmin
 
 
 @admin.register(Scheme)
-class SchemeAdmin(admin.ModelAdmin):
+class AcademicSchemeAdmin(PermissionRestrictedAdmin):
     list_display = ['year', 'name', 'is_active', 'subject_count', 'created_at']
     list_filter = ['is_active', 'created_at']
     search_fields = ['name', 'year']
@@ -18,7 +19,7 @@ class SchemeAdmin(admin.ModelAdmin):
 
 
 @admin.register(Subject)
-class SubjectAdmin(admin.ModelAdmin):
+class SubjectAdmin(PermissionRestrictedAdmin):
     list_display = ['code', 'name', 'scheme', 'semester', 'credits', 'is_active', 'resource_count']
     list_filter = ['scheme', 'semester', 'credits', 'is_active']
     search_fields = ['name', 'code']
@@ -72,7 +73,7 @@ class AcademicCategoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(AcademicResource)
-class AcademicResourceAdmin(admin.ModelAdmin):
+class AcademicResourceAdmin(PermissionRestrictedAdmin):
     list_display = [
         'title', 'category', 'subject', 'uploaded_by', 'approval_status', 
         'file_size_display', 'download_count', 'is_featured', 'created_at'

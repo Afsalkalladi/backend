@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import GalleryCategory, GalleryImage, GalleryAlbum, AlbumImage
+from accounts.admin_base import PermissionRestrictedAdmin
 
 
 @admin.register(GalleryCategory)
@@ -17,11 +18,11 @@ class GalleryCategoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(GalleryImage)
-class GalleryImageAdmin(admin.ModelAdmin):
+class GalleryImageAdmin(PermissionRestrictedAdmin):
     list_display = ['title', 'image_preview', 'category', 'event_name', 'is_featured', 'is_public', 'uploaded_by', 'created_at']
     list_filter = ['category', 'is_featured', 'is_public', 'event_date', 'uploaded_by', 'created_at']
     search_fields = ['title', 'description', 'event_name', 'tags', 'photographer']
-    readonly_fields = ['file_size', 'image_width', 'image_height', 'created_at', 'updated_at', 'image_preview_large']
+    readonly_fields = ['uploaded_by', 'file_size', 'image_width', 'image_height', 'created_at', 'updated_at', 'image_preview_large']
     list_editable = ['is_featured', 'is_public']
     date_hierarchy = 'created_at'
     
@@ -82,12 +83,12 @@ class AlbumImageInline(admin.TabularInline):
 
 
 @admin.register(GalleryAlbum)
-class GalleryAlbumAdmin(admin.ModelAdmin):
+class GalleryAlbumAdmin(PermissionRestrictedAdmin):
     list_display = ['name', 'image_count', 'event_date', 'is_featured', 'is_public', 'created_by', 'created_at']
     list_filter = ['is_featured', 'is_public', 'event_date', 'created_by', 'created_at']
     search_fields = ['name', 'description', 'location']
     prepopulated_fields = {'slug': ('name',)}
-    readonly_fields = ['created_at', 'updated_at', 'image_count']
+    readonly_fields = ['created_by', 'created_at', 'updated_at', 'image_count']
     list_editable = ['is_featured', 'is_public']
     date_hierarchy = 'created_at'
     inlines = [AlbumImageInline]

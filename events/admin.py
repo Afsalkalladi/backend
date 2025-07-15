@@ -5,6 +5,7 @@ from django.utils.safestring import mark_safe
 from django.http import HttpResponse
 from django.db.models import Count, Sum, Q
 from django.utils import timezone
+from accounts.admin_base import PermissionRestrictedAdmin
 import csv
 from .models import Event, EventRegistration, EventSpeaker, EventSchedule, EventFeedback
 
@@ -29,7 +30,7 @@ class EventSpeakerInline(admin.TabularInline):
 
 
 @admin.register(Event)
-class EventAdmin(admin.ModelAdmin):
+class EventAdmin(PermissionRestrictedAdmin):
     list_display = [
         'title', 'event_type', 'start_date_formatted', 'status', 'registration_count',
         'is_upcoming_indicator', 'is_featured_indicator', 'created_by'
@@ -39,13 +40,13 @@ class EventAdmin(admin.ModelAdmin):
         'payment_required', 'created_by'
     ]
     search_fields = ['title', 'description', 'location', 'venue']
-    readonly_fields = ['created_at', 'updated_at', 'spots_remaining']
+    readonly_fields = ['created_by', 'created_at', 'updated_at', 'spots_remaining']
     inlines = [EventSpeakerInline, EventScheduleInline]
     actions = ['mark_as_featured', 'mark_as_published', 'mark_as_cancelled', 'export_registrations_csv']
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('title', 'description', 'event_type', 'status', 'created_by')
+            'fields': ('title', 'description', 'event_type', 'status')
         }),
         ('Schedule', {
             'fields': ('start_date', 'end_date', 'registration_deadline')
@@ -69,7 +70,7 @@ class EventAdmin(admin.ModelAdmin):
             'fields': ('is_active', 'is_featured')
         }),
         ('Metadata', {
-            'fields': ('created_at', 'updated_at'),
+            'fields': ('created_by', 'created_at', 'updated_at'),
             'classes': ['collapse']
         })
     )
@@ -161,10 +162,16 @@ class EventAdmin(admin.ModelAdmin):
         return response
     
     export_registrations_csv.short_description = 'Export registrations to CSV'
+    
+    def save_model(self, request, obj, form, change):
+        """Auto-populate created_by field"""
+        if not change:  # If creating new object
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(EventRegistration)
-class EventRegistrationAdmin(admin.ModelAdmin):
+class EventRegistrationAdmin(PermissionRestrictedAdmin):
     list_display = [
         'name', 'email', 'event', 'payment_status', 'payment_amount',
         'attended', 'certificate_issued', 'registered_at'

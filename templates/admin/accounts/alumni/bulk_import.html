@@ -1,0 +1,50 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Alumni Bulk Import - {{ site_title|default:"Django site admin" }}{% endblock %}
+
+{% block content %}
+<div class="module">
+    <h2>Alumni Bulk Import</h2>
+    
+    <div class="form-row">
+        <p>Import alumni data from a CSV file. The CSV file should contain the following columns:</p>
+        <ul>
+            <li><strong>first_name</strong> - First name (required)</li>
+            <li><strong>last_name</strong> - Last name (required)</li>
+            <li><strong>email</strong> - Email address (required, unique)</li>
+            <li><strong>student_id</strong> - Student ID (required, unique)</li>
+            <li><strong>branch</strong> - Branch (required) - Options: CSE, ECE, EEE, MECH, CIVIL, IT, OTHER</li>
+            <li><strong>year_of_admission</strong> - Year of admission (required)</li>
+            <li><strong>year_of_passout</strong> - Year of passout (required)</li>
+            <li><strong>mobile_number</strong> - Mobile number (optional)</li>
+            <li><strong>cgpa</strong> - CGPA (optional)</li>
+            <li><strong>current_workplace</strong> - Current workplace (optional)</li>
+            <li><strong>job_title</strong> - Job title (optional)</li>
+            <li><strong>current_location</strong> - Current location (optional)</li>
+            <li><strong>linkedin_url</strong> - LinkedIn URL (optional)</li>
+            <li><strong>achievements</strong> - Achievements (optional)</li>
+            <li><strong>willing_to_mentor</strong> - Willing to mentor (optional) - true/false</li>
+        </ul>
+    </div>
+    
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-row">
+            <label for="csv_file">CSV File:</label>
+            <input type="file" name="csv_file" accept=".csv" required>
+        </div>
+        
+        <div class="form-row">
+            <input type="submit" value="Import Alumni" class="default">
+            <a href="{% url 'admin:accounts_alumni_changelist' %}" class="button">Cancel</a>
+        </div>
+    </form>
+    
+    <div class="help">
+        <h3>Sample CSV Format:</h3>
+        <pre>first_name,last_name,email,student_id,branch,year_of_admission,year_of_passout,mobile_number,cgpa,current_workplace,job_title,current_location,linkedin_url,achievements,willing_to_mentor
+John,Doe,john.doe@example.com,18CS001,CSE,2018,2022,9876543210,8.5,Google,Software Engineer,Bangalore,https://linkedin.com/in/johndoe,Won hackathon 2021,true
+Jane,Smith,jane.smith@example.com,18EC001,ECE,2018,2022,9876543211,9.0,Microsoft,Product Manager,Hyderabad,https://linkedin.com/in/janesmith,,false</pre>
+    </div>
+</div>
+{% endblock %}

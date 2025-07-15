@@ -51,13 +51,13 @@ urlpatterns = [
     
     # API endpoints
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/accounts/', include('accounts.urls')),  # Alumni and team members
     path('api/academics/', include('academics.urls')),
     path('api/projects/', include('projects.urls')),
     path('api/events/', include('events.urls')),
     path('api/placements/', include('placements.urls')),
     path('api/careers/', include('careers.urls')),
     path('api/gallery/', include('gallery.urls')),
-    path('api/core/', include('core.urls')),  # For alumni and other core features
 ]
 
 # Serve media files during development

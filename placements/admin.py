@@ -7,7 +7,7 @@ class CompanyAdmin(admin.ModelAdmin):
     list_display = ['name', 'industry', 'location', 'is_verified', 'is_active', 'created_at']
     list_filter = ['industry', 'company_size', 'is_verified', 'is_active', 'created_at']
     search_fields = ['name', 'industry', 'location', 'contact_person']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['created_by', 'created_at', 'updated_at']
     list_editable = ['is_verified', 'is_active']
     
     fieldsets = (
@@ -28,6 +28,12 @@ class CompanyAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         })
     )
+    
+    def save_model(self, request, obj, form, change):
+        """Auto-populate created_by field"""
+        if not change:  # If creating new object
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(PlacementDrive)
@@ -35,7 +41,7 @@ class PlacementDriveAdmin(admin.ModelAdmin):
     list_display = ['title', 'company', 'job_type', 'package_lpa', 'drive_date', 'is_active', 'is_featured']
     list_filter = ['job_type', 'drive_mode', 'is_active', 'is_featured', 'drive_date', 'company']
     search_fields = ['title', 'company__name', 'description']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['created_by', 'created_at', 'updated_at']
     list_editable = ['is_active', 'is_featured']
     date_hierarchy = 'drive_date'
     
@@ -180,7 +186,7 @@ class PlacedStudentAdmin(admin.ModelAdmin):
     list_display = ['student_name', 'company', 'job_title', 'package_lpa', 'batch_year', 'branch', 'is_verified', 'offer_date']
     list_filter = ['batch_year', 'branch', 'job_type', 'is_verified', 'company', 'offer_date']
     search_fields = ['student_name', 'student_email', 'roll_number', 'company__name', 'job_title']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['created_by', 'created_at', 'updated_at']
     list_editable = ['is_verified']
     date_hierarchy = 'offer_date'
     

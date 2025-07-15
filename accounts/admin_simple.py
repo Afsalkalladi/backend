@@ -7,7 +7,6 @@ from .models import User, Alumni, AuditLog, TeamMember
 from .admin_base import AuditableAdmin
 import csv
 import io
-from django.contrib.auth.models import Group
 
 
 class UserAdmin(BaseUserAdmin, AuditableAdmin):
@@ -35,25 +34,12 @@ class UserAdmin(BaseUserAdmin, AuditableAdmin):
     )
     
     def group_list(self, obj):
-        """Display user's groups with color coding"""
+        """Display user's groups"""
         groups = obj.groups.all()
         if groups:
-            group_names = []
-            for group in groups:
-                if 'Alumni' in group.name:
-                    group_names.append(f'<span style="color: #28a745;">{group.name}</span>')
-                elif 'Academic' in group.name:
-                    group_names.append(f'<span style="color: #17a2b8;">{group.name}</span>')
-                elif 'Events' in group.name:
-                    group_names.append(f'<span style="color: #ffc107;">{group.name}</span>')
-                elif 'Placements' in group.name:
-                    group_names.append(f'<span style="color: #dc3545;">{group.name}</span>')
-                else:
-                    group_names.append(group.name)
-            return ", ".join(group_names)
-        return '<span style="color: #6c757d;">No groups</span>'
-    group_list.short_description = 'Management Groups'
-    group_list.allow_tags = True
+            return ", ".join([group.name for group in groups])
+        return "No groups"
+    group_list.short_description = 'Groups'
     
     def get_queryset(self, request):
         """Only superusers can see all users"""
@@ -319,33 +305,6 @@ class AuditLogAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser
 
-
-class GroupAdmin(admin.ModelAdmin):
-    """Enhanced Group administration"""
-    
-    list_display = ('name', 'permission_count', 'user_count')
-    search_fields = ('name',)
-    filter_horizontal = ('permissions',)
-    
-    def permission_count(self, obj):
-        """Show number of permissions in the group"""
-        return obj.permissions.count()
-    permission_count.short_description = 'Permissions'
-    
-    def user_count(self, obj):
-        """Show number of users in the group"""
-        return obj.user_set.count()
-    user_count.short_description = 'Users'
-    
-    def get_queryset(self, request):
-        """Add annotation for better performance"""
-        qs = super().get_queryset(request)
-        return qs.prefetch_related('permissions', 'user_set')
-
-
-# Unregister the default Group admin and register our custom one
-admin.site.unregister(Group)
-admin.site.register(Group, GroupAdmin)
 
 # Register User admin
 admin.site.register(User, UserAdmin)

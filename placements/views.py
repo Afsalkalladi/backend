@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Q, Count
-from core.permissions import IsAdminOrTechnicalHead
+from accounts.permissions import IsAdminOrTechnicalHead
 from .models import Company, PlacementDrive, PlacementApplication, PlacementCoordinator, PlacementStatistics
 from .serializers import (
     CompanySerializer, CompanyListSerializer,
