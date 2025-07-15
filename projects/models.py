@@ -5,7 +5,7 @@ User = get_user_model()
 
 
 class Project(models.Model):
-    """Student project model for project portal"""
+    """Projects showcase - managed by staff only"""
     
     CATEGORY_CHOICES = [
         ('web_development', 'Web Development'),
@@ -23,27 +23,62 @@ class Project(models.Model):
     
     title = models.CharField(max_length=200)
     description = models.TextField()
+    abstract = models.TextField(blank=True, null=True, help_text="Project abstract or summary")
     category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
+    
+    # Student Information (since students can't create accounts)
+    student_names = models.TextField(blank=True, null=True, help_text="Names of students who worked on this project")
+    student_batch = models.CharField(max_length=20, blank=True, null=True, help_text="e.g., 2021-2025")
+    student_department = models.CharField(max_length=100, default="Electronics Engineering")
+    
+    # Files
+    project_report = models.FileField(upload_to='project_reports/', blank=True, null=True, help_text="Upload project report (PDF)")
+    project_images = models.ImageField(upload_to='project_images/', blank=True, null=True, help_text="Project screenshots or images")
     
     # Links
     github_url = models.URLField(blank=True, null=True)
     demo_url = models.URLField(blank=True, null=True)
     
-    # Project creator
+    # Project management (only staff can create/edit)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_projects')
+    is_featured = models.BooleanField(default=False, help_text="Feature this project on homepage")
+    is_published = models.BooleanField(default=True, help_text="Make this project visible to public")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['-is_featured', '-created_at']
         indexes = [
             models.Index(fields=['category']),
             models.Index(fields=['created_by']),
+            models.Index(fields=['is_featured', 'is_published']),
         ]
     
     def __str__(self):
         return f"{self.title} - {self.get_category_display()}"
+    
+    @property
+    def team_count(self):
+        """Get total team size including creator"""
+        return self.team_members.count() + 1  # +1 for creator
+    
+    @property 
+    def created_by_name(self):
+        """Get creator's full name"""
+        return self.created_by.get_full_name() or self.created_by.username
+    
+    @property
+    def featured_image(self):
+        """Get the featured image for this project"""
+        featured = self.images.filter(is_featured=True).first()
+        return featured if featured else self.images.first()
+    
+    @property
+    def featured_video(self):
+        """Get the featured video for this project"""
+        featured = self.videos.filter(is_featured=True).first()
+        return featured if featured else self.videos.first()
 
 
 class TeamMember(models.Model):
@@ -61,3 +96,38 @@ class TeamMember(models.Model):
     
     def __str__(self):
         return f"{self.name} - {self.project.title}"
+
+
+class ProjectImage(models.Model):
+    """Project images for gallery"""
+    
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='project_images/', help_text="Upload project image")
+    caption = models.CharField(max_length=200, blank=True, null=True)
+    is_featured = models.BooleanField(default=False, help_text="Show as main project image")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-is_featured', 'created_at']
+    
+    def __str__(self):
+        return f"{self.project.title} - Image {self.id}"
+
+
+class ProjectVideo(models.Model):
+    """Project videos for demonstration"""
+    
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='videos')
+    video_url = models.URLField(help_text="YouTube, Vimeo, or direct video URL")
+    title = models.CharField(max_length=200, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    is_featured = models.BooleanField(default=False, help_text="Show as main project video")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-is_featured', 'created_at']
+    
+    def __str__(self):
+        return f"{self.project.title} - {self.title or 'Video'}"

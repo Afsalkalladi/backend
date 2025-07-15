@@ -141,14 +141,16 @@ DEL  /api/students/reviewers/<id>/remove/  # Remove reviewer
 ### Academic System
 
 ```
-GET  /api/academics/subjects/          # Get subjects by scheme & semester
-POST /api/academics/subjects/create/   # Create subject (admin/tech_head)
-GET  /api/academics/notes/             # List notes (with filtering)
-POST /api/academics/notes/upload/      # Upload note
-POST /api/academics/notes/approve/     # Approve note
-GET  /api/academics/notes/my/          # Current user's notes
-GET  /api/academics/notes/pending/     # Pending approval notes
-DEL  /api/academics/notes/<id>/delete/ # Delete note
+GET  /api/academics/upload/schemes/       # Get available schemes & semesters
+GET  /api/academics/upload/subjects/      # Get subjects by scheme & semester
+GET  /api/academics/subjects/             # Get subjects by scheme & semester
+POST /api/academics/subjects/create/      # Create subject (admin/tech_head)
+GET  /api/academics/notes/                # List notes (with filtering)
+POST /api/academics/notes/upload/         # Upload note (hierarchical flow)
+POST /api/academics/notes/approve/        # Approve note
+GET  /api/academics/notes/my/             # Current user's notes
+GET  /api/academics/notes/pending/        # Pending approval notes
+DEL  /api/academics/notes/<id>/delete/    # Delete note
 ```
 
 ### Project Portal

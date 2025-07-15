@@ -1,7 +1,8 @@
 from rest_framework import status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from accounts.permissions import IsOwnerOrReadOnly
+from django.db.models import Q, Count
+from core.permissions import IsOwnerOrReadOnly
 from .models import Project
 from .serializers import (
     ProjectSerializer, ProjectCreateSerializer, ProjectUpdateSerializer, ProjectListSerializer
@@ -9,36 +10,80 @@ from .serializers import (
 
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.AllowAny])  # Allow public access
 def projects_list(request):
-    """List all projects with filtering"""
+    """List all projects with comprehensive filtering - public access"""
+    # Get filter parameters
     category = request.GET.get('category')
     search = request.GET.get('search')
+    creator = request.GET.get('creator')
+    team_size = request.GET.get('team_size')
+    has_demo = request.GET.get('has_demo')
+    has_github = request.GET.get('has_github')
     
     queryset = Project.objects.all()
     
-    if category:
+    # Apply filters
+    if category and category != 'All Categories':
         queryset = queryset.filter(category=category)
     
+    if creator:
+        queryset = queryset.filter(created_by__username__icontains=creator)
+    
+    if team_size:
+        try:
+            size = int(team_size)
+            # Filter by team count (creator + team members)
+            queryset = queryset.annotate(
+                total_team_count=models.Count('team_members') + 1
+            ).filter(total_team_count=size)
+        except ValueError:
+            pass
+    
+    if has_demo and has_demo.lower() == 'true':
+        queryset = queryset.filter(demo_url__isnull=False).exclude(demo_url='')
+    
+    if has_github and has_github.lower() == 'true':
+        queryset = queryset.filter(github_url__isnull=False).exclude(github_url='')
+    
+    # Search functionality
     if search:
         queryset = queryset.filter(
-            title__icontains=search
-        )
+            Q(title__icontains=search) |
+            Q(description__icontains=search) |
+            Q(created_by__first_name__icontains=search) |
+            Q(created_by__last_name__icontains=search) |
+            Q(created_by__username__icontains=search) |
+            Q(team_members__name__icontains=search)
+        ).distinct()
     
-    projects = queryset.order_by('-created_at').select_related('created_by')
+    projects = queryset.order_by('-created_at').select_related('created_by').prefetch_related(
+        'team_members', 'images', 'videos'
+    )
+    
+    # Get available creators for filtering
+    available_creators = Project.objects.select_related('created_by').values(
+        'created_by__id', 'created_by__username', 'created_by__first_name', 'created_by__last_name'
+    ).distinct().order_by('created_by__username')
     
     return Response({
         'projects': ProjectListSerializer(projects, many=True).data,
-        'categories': dict(Project.CATEGORY_CHOICES)
+        'count': projects.count(),
+        'filters': {
+            'categories': dict(Project.CATEGORY_CHOICES),
+            'creators': list(available_creators)
+        }
     })
 
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.AllowAny])  # Allow public access
 def project_detail(request, pk):
-    """Get detailed project information"""
+    """Get detailed project information - public access"""
     try:
-        project = Project.objects.select_related('created_by').prefetch_related('team_members').get(pk=pk)
+        project = Project.objects.select_related('created_by').prefetch_related(
+            'team_members', 'images', 'videos'
+        ).get(pk=pk)
         return Response(ProjectSerializer(project).data)
     except Project.DoesNotExist:
         return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)

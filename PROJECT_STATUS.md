@@ -176,6 +176,39 @@ eesa/
 ✅ **Admin interface** for management  
 ✅ **Sample data** for testing
 
+## 🔄 Note Upload Flow Enhancement ✅
+
+**IMPLEMENTED**: Hierarchical note upload flow following **Scheme → Semester → Subject** structure
+
+### ✅ New API Endpoints Added
+
+- `GET /api/academics/upload/schemes/` - Get available schemes and semesters
+- `GET /api/academics/upload/subjects/?scheme=X&semester=Y` - Get subjects for specific scheme/semester
+- Enhanced `POST /api/academics/notes/upload/` - Now validates scheme/semester/subject relationship
+
+### ✅ Improved Validation
+
+- Subject must belong to specified scheme and semester
+- Scheme and semester parameters are required for subject selection
+- Proper error messages for invalid combinations
+- Semester range validation (1-8)
+
+### ✅ Frontend-Ready Flow
+
+1. **Step 1**: Get available schemes and their semesters
+2. **Step 2**: User selects scheme and semester
+3. **Step 3**: Get available subjects for that combination
+4. **Step 4**: User selects subject and uploads note with validation
+
+### ✅ Enhanced User Experience
+
+- Prevents invalid subject selection
+- Clear error messages for validation failures
+- Structured data response for easy frontend integration
+- Maintains academic hierarchy integrity
+
+**📋 Documentation**: Complete API flow documentation created in `NOTE_UPLOAD_API.md`
+
 ## 🎉 Congratulations!
 
 Your **EESA Backend Phase 1** is complete and fully functional!

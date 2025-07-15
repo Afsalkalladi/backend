@@ -4,12 +4,22 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 User = get_user_model()
 
+# Note: Students are no longer users in the system
+# Student-related data is now handled through event registrations and alumni records
+# This model is kept for legacy compatibility but should be considered deprecated
 
 class Student(models.Model):
-    """Student model with academic information"""
+    """
+    DEPRECATED: Legacy student model
+    Students are now handled through EventRegistration and Alumni models
+    """
     
-    user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
+    # Basic Information
     full_name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+    mobile_number = models.CharField(max_length=15)
+    
+    # Academic Information
     scheme = models.PositiveIntegerField(help_text="e.g., 2019, 2021")
     year_of_joining = models.PositiveIntegerField(help_text="e.g., 2021")
     expected_year_of_passout = models.PositiveIntegerField(help_text="e.g., 2025")
@@ -21,7 +31,10 @@ class Student(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(4)],
         help_text="Year of study (1-4)"
     )
+    department = models.CharField(max_length=100, default="Electronics Engineering")
     
+    # Metadata
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_students')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

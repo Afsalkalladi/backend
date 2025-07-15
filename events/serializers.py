@@ -1,72 +1,144 @@
 from rest_framework import serializers
-from .models import Event
-from accounts.serializers import UserSerializer
+from .models import Event, EventRegistration, EventSpeaker, EventSchedule, EventFeedback
+
+
+class EventSpeakerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventSpeaker
+        fields = [
+            'id', 'name', 'title', 'organization', 'bio', 'profile_image',
+            'linkedin_url', 'twitter_url', 'website_url',
+            'talk_title', 'talk_abstract', 'talk_duration', 'order'
+        ]
+
+
+class EventScheduleSerializer(serializers.ModelSerializer):
+    speaker = EventSpeakerSerializer(read_only=True)
+    
+    class Meta:
+        model = EventSchedule
+        fields = [
+            'id', 'title', 'description', 'speaker', 'start_time', 'end_time', 'venue_details'
+        ]
 
 
 class EventSerializer(serializers.ModelSerializer):
-    """Event serializer"""
+    speakers = EventSpeakerSerializer(many=True, read_only=True)
+    schedule = EventScheduleSerializer(many=True, read_only=True)
+    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
     
-    created_by = UserSerializer(read_only=True)
+    # Dynamic properties
     is_upcoming = serializers.ReadOnlyField()
     is_past = serializers.ReadOnlyField()
+    is_ongoing = serializers.ReadOnlyField()
+    is_registration_open = serializers.ReadOnlyField()
+    registration_count = serializers.ReadOnlyField()
+    spots_remaining = serializers.ReadOnlyField()
     
     class Meta:
         model = Event
         fields = [
-            'id', 'title', 'description', 'date', 'time', 'venue',
-            'created_by', 'is_active', 'is_upcoming', 'is_past',
-            'created_at', 'updated_at'
+            'id', 'title', 'description', 'event_type', 'status',
+            'start_date', 'end_date', 'registration_deadline',
+            'location', 'venue', 'address', 'is_online', 'meeting_link',
+            'registration_required', 'max_participants',
+            'registration_fee', 'payment_required', 'payment_qr_code',
+            'payment_upi_id', 'payment_instructions',
+            'contact_person', 'contact_email', 'contact_phone',
+            'banner_image', 'event_flyer',
+            'is_active', 'is_featured',
+            'created_by_name', 'created_at', 'updated_at',
+            'speakers', 'schedule',
+            'is_upcoming', 'is_past', 'is_ongoing', 'is_registration_open',
+            'registration_count', 'spots_remaining'
         ]
-        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
-
-
-class EventCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating events"""
-    
-    class Meta:
-        model = Event
-        fields = ['title', 'description', 'date', 'time', 'venue']
-    
-    def validate_date(self, value):
-        from django.utils import timezone
-        if value < timezone.now().date():
-            raise serializers.ValidationError("Event date cannot be in the past")
-        return value
-    
-    def create(self, validated_data):
-        validated_data['created_by'] = self.context['request'].user
-        return super().create(validated_data)
-
-
-class EventUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for updating events"""
-    
-    class Meta:
-        model = Event
-        fields = ['title', 'description', 'date', 'time', 'venue', 'is_active']
-    
-    def validate_date(self, value):
-        from django.utils import timezone
-        if value < timezone.now().date():
-            raise serializers.ValidationError("Event date cannot be in the past")
-        return value
+        read_only_fields = ['created_at', 'updated_at']
 
 
 class EventListSerializer(serializers.ModelSerializer):
-    """Simplified event serializer for lists"""
-    
-    created_by_name = serializers.CharField(source='created_by.username', read_only=True)
+    """Simplified serializer for event lists"""
+    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    is_upcoming = serializers.ReadOnlyField()
+    is_registration_open = serializers.ReadOnlyField()
+    registration_count = serializers.ReadOnlyField()
+    spots_remaining = serializers.ReadOnlyField()
     
     class Meta:
         model = Event
         fields = [
-            'id', 'title', 'date', 'time', 'venue', 'created_by_name', 'is_active'
+            'id', 'title', 'description', 'event_type', 'status',
+            'start_date', 'end_date', 'location', 'venue',
+            'registration_required', 'max_participants', 'registration_fee',
+            'banner_image', 'is_featured',
+            'created_by_name', 'created_at',
+            'is_upcoming', 'is_registration_open', 'registration_count', 'spots_remaining'
         ]
 
 
-class UpcomingEventSerializer(serializers.ModelSerializer):
-    """Serializer for upcoming events ticker"""
+class EventRegistrationSerializer(serializers.ModelSerializer):
+    event_title = serializers.CharField(source='event.title', read_only=True)
+    event_date = serializers.DateTimeField(source='event.start_date', read_only=True)
+    payment_status_display = serializers.CharField(source='get_payment_status_display', read_only=True)
     
     class Meta:
-        model = Event
-        fields = ['id', 'title', 'date', 'time', 'venue']
+        model = EventRegistration
+        fields = [
+            'id', 'event', 'event_title', 'event_date',
+            'name', 'email', 'mobile_number',
+            'institution', 'department', 'year_of_study',
+            'organization', 'designation',
+            'payment_status', 'payment_status_display', 'payment_amount',
+            'payment_date', 'payment_reference',
+            'dietary_requirements', 'special_needs',
+            'attended', 'certificate_issued',
+            'registered_at', 'updated_at'
+        ]
+        read_only_fields = ['registered_at', 'updated_at', 'payment_amount']
+    
+    def validate_email(self, value):
+        """Ensure email is unique per event"""
+        event = self.initial_data.get('event')
+        if event:
+            existing = EventRegistration.objects.filter(
+                event_id=event, email=value
+            ).exclude(id=self.instance.id if self.instance else None)
+            if existing.exists():
+                raise serializers.ValidationError("You have already registered for this event.")
+        return value
+    
+    def validate(self, data):
+        """Validate registration constraints"""
+        event = data.get('event')
+        if event:
+            # Check if registration is open
+            if not event.is_registration_open:
+                raise serializers.ValidationError("Registration is closed for this event.")
+            
+            # Check if event is published
+            if event.status != 'published':
+                raise serializers.ValidationError("Registration is not available for this event.")
+        
+        return data
+
+
+class EventFeedbackSerializer(serializers.ModelSerializer):
+    event_title = serializers.CharField(source='event.title', read_only=True)
+    participant_name = serializers.CharField(source='registration.name', read_only=True)
+    
+    class Meta:
+        model = EventFeedback
+        fields = [
+            'id', 'event', 'event_title', 'registration', 'participant_name',
+            'overall_rating', 'content_rating', 'organization_rating',
+            'liked_most', 'improvements', 'additional_comments',
+            'would_recommend', 'future_topics',
+            'submitted_at'
+        ]
+        read_only_fields = ['submitted_at']
+    
+    def validate(self, data):
+        """Ensure participant has attended the event"""
+        registration = data.get('registration')
+        if registration and not registration.attended:
+            raise serializers.ValidationError("Feedback can only be submitted by participants who attended the event.")
+        return data

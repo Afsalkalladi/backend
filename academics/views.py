@@ -1,182 +1,238 @@
-from rest_framework import status, permissions
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.utils import timezone
-from accounts.permissions import (
-    IsAdminOrTechnicalHead, IsStudentOrAdminOrTechnicalHead, CanApproveNotes, IsOwnerOrReadOnly
-)
-from .models import Subject, Note
-from .serializers import (
-    SubjectSerializer, NoteSerializer, NoteUploadSerializer, 
-    NoteApprovalSerializer, SubjectsBySchemeSerializer
-)
-
+from django.shortcuts import get_object_or_404
+from django.db.models import Q
+from django.http import HttpResponse, Http404
+from django.conf import settings
+import os
+from .models import AcademicCategory, AcademicResource, Scheme, Subject
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
-def subjects_by_scheme_semester(request):
-    """Get subjects by scheme and semester"""
-    scheme = request.GET.get('scheme')
-    semester = request.GET.get('semester')
-    
-    if not scheme or not semester:
-        return Response({
-            'error': 'Both scheme and semester parameters are required'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
+@permission_classes([])  # Remove authentication requirement
+def academic_categories_list(request):
+    """List all academic categories"""
+    categories = AcademicCategory.objects.all().values(
+        'id', 'name', 'category_type', 'description', 'icon', 'is_active'
+    )
+    return Response(list(categories))
+
+@api_view(['GET'])
+@permission_classes([])  # Remove authentication requirement
+def category_detail(request, category_type):
+    """Get category details and its resources"""
     try:
-        scheme = int(scheme)
-        semester = int(semester)
-    except ValueError:
-        return Response({
-            'error': 'Scheme and semester must be integers'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    subjects = Subject.objects.filter(
-        scheme=scheme, 
-        semester=semester, 
-        is_active=True
-    ).order_by('name')
-    
-    return Response({
-        'scheme': scheme,
-        'semester': semester,
-        'subjects': SubjectSerializer(subjects, many=True).data
-    })
-
-
-@api_view(['POST'])
-@permission_classes([IsAdminOrTechnicalHead])
-def create_subject(request):
-    """Create a new subject"""
-    serializer = SubjectSerializer(data=request.data)
-    if serializer.is_valid():
-        subject = serializer.save()
-        return Response({
-            'message': 'Subject created successfully',
-            'subject': SubjectSerializer(subject).data
-        }, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
-def notes_list(request):
-    """List notes with filtering options"""
-    scheme = request.GET.get('scheme')
-    semester = request.GET.get('semester')
-    subject_id = request.GET.get('subject')
-    approved_only = request.GET.get('approved_only', 'true').lower() == 'true'
-    
-    queryset = Note.objects.all()
-    
-    if approved_only:
-        queryset = queryset.filter(is_approved=True)
-    
-    if subject_id:
-        queryset = queryset.filter(subject_id=subject_id)
-    elif scheme and semester:
-        queryset = queryset.filter(subject__scheme=scheme, subject__semester=semester)
-    
-    # Order by approval status and creation date
-    queryset = queryset.order_by('-is_approved', '-created_at')
-    
-    notes = queryset.select_related('subject', 'uploaded_by', 'approved_by')
-    
-    return Response({
-        'notes': NoteSerializer(notes, many=True).data
-    })
-
-
-@api_view(['POST'])
-@permission_classes([IsStudentOrAdminOrTechnicalHead])
-def upload_note(request):
-    """Upload a new note"""
-    serializer = NoteUploadSerializer(data=request.data, context={'request': request})
-    if serializer.is_valid():
-        note = serializer.save()
-        return Response({
-            'message': 'Note uploaded successfully',
-            'note': NoteSerializer(note).data
-        }, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['POST'])
-@permission_classes([CanApproveNotes])
-def approve_note(request):
-    """Approve a note"""
-    serializer = NoteApprovalSerializer(data=request.data)
-    if serializer.is_valid():
-        note_id = serializer.validated_data['note_id']
+        # Get the first category of this type (in case there are duplicates)
+        category = AcademicCategory.objects.filter(category_type=category_type).first()
+        if not category:
+            return Response({'error': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+        resources = AcademicResource.objects.filter(category__category_type=category_type, is_approved=True)
         
-        try:
-            note = Note.objects.get(pk=note_id)
-        except Note.DoesNotExist:
-            return Response({'error': 'Note not found'}, status=status.HTTP_404_NOT_FOUND)
+        # Filter by query parameters
+        scheme_id = request.GET.get('scheme')
+        subject_id = request.GET.get('subject')
+        semester = request.GET.get('semester')
         
-        # Check if user can approve this specific note
-        if not note.can_be_approved_by(request.user):
-            return Response({
-                'error': 'You are not authorized to approve this note'
-            }, status=status.HTTP_403_FORBIDDEN)
+        if scheme_id:
+            resources = resources.filter(scheme_id=scheme_id)
+        if subject_id:
+            resources = resources.filter(subject_id=subject_id)
+        if semester:
+            resources = resources.filter(semester=semester)
+            
+        category_data = {
+            'id': category.id,
+            'name': category.name,
+            'category_type': category.category_type,
+            'description': category.description,
+            'icon': category.icon,
+            'is_active': category.is_active
+        }
         
-        note.is_approved = True
-        note.approved_by = request.user
-        note.approved_at = timezone.now()
-        note.save()
+        resources_data = list(resources.values(
+            'id', 'title', 'description', 'file', 'file_size',
+            'module_number', 'exam_type', 'exam_year', 'author',
+            'download_count', 'created_at', 'updated_at'
+        ))
         
         return Response({
-            'message': 'Note approved successfully',
-            'note': NoteSerializer(note).data
+            'category': category_data,
+            'resources': resources_data
         })
-    
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    except AcademicCategory.DoesNotExist:
+        return Response({'error': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
-def my_notes(request):
-    """Get current user's uploaded notes"""
-    notes = Note.objects.filter(uploaded_by=request.user).order_by('-created_at')
-    return Response({
-        'notes': NoteSerializer(notes, many=True).data
-    })
+@permission_classes([])  # Remove authentication requirement
+def academic_resources_list(request):
+    """List academic resources with filtering"""
+    resources = AcademicResource.objects.filter(is_approved=True)
+    
+    # Filter by category type
+    category_type = request.GET.get('category_type')
+    if category_type:
+        resources = resources.filter(category__category_type=category_type)
+    
+    # Filter by other parameters
+    scheme_id = request.GET.get('scheme')
+    subject_id = request.GET.get('subject')
+    semester = request.GET.get('semester')
+    search = request.GET.get('search')
+    
+    if scheme_id:
+        resources = resources.filter(scheme_id=scheme_id)
+    if subject_id:
+        resources = resources.filter(subject_id=subject_id)
+    if semester:
+        resources = resources.filter(semester=semester)
+    if search:
+        resources = resources.filter(
+            Q(title__icontains=search) | 
+            Q(description__icontains=search)
+        )
+    
+    resources_data = list(resources.values(
+        'id', 'title', 'description', 'file', 'file_size',
+        'module_number', 'exam_type', 'exam_year', 'author',
+        'download_count', 'created_at', 'updated_at'
+    ))
+    return Response(resources_data)
 
-
-@api_view(['DELETE'])
-@permission_classes([permissions.IsAuthenticated])
-def delete_note(request, pk):
-    """Delete a note (only by uploader or admin)"""
+@api_view(['GET'])
+def academic_resource_detail(request, pk):
+    """Get single academic resource"""
     try:
-        note = Note.objects.get(pk=pk)
-        
-        # Check permissions
-        if note.uploaded_by != request.user and request.user.role != 'admin':
-            return Response({
-                'error': 'You can only delete your own notes'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        note.delete()
-        return Response({'message': 'Note deleted successfully'})
-        
-    except Note.DoesNotExist:
-        return Response({'error': 'Note not found'}, status=status.HTTP_404_NOT_FOUND)
+        resource = AcademicResource.objects.get(pk=pk, is_approved=True)
+        resource_data = {
+            'id': resource.id,
+            'title': resource.title,
+            'description': resource.description,
+            'file': resource.file.url if resource.file else None,
+            'file_size': resource.file_size,
+            'module_number': resource.module_number,
+            'exam_type': resource.exam_type,
+            'exam_year': resource.exam_year,
+            'author': resource.author,
+            'created_at': resource.created_at,
+            'updated_at': resource.updated_at
+        }
+        return Response(resource_data)
+    except AcademicResource.DoesNotExist:
+        return Response({'error': 'Resource not found'}, status=status.HTTP_404_NOT_FOUND)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_academic_resource(request):
+    """Upload new academic resource"""
+    # Simple validation and creation
+    required_fields = ['title', 'category', 'file']
+    for field in required_fields:
+        if field not in request.data:
+            return Response({'error': f'{field} is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        category = AcademicCategory.objects.get(id=request.data['category'])
+        resource = AcademicResource.objects.create(
+            title=request.data['title'],
+            description=request.data.get('description', ''),
+            category=category,
+            file=request.FILES['file'],
+            uploaded_by=request.user,
+            module_number=request.data.get('module_number', 1),
+            exam_type=request.data.get('exam_type', ''),
+            exam_year=request.data.get('exam_year'),
+            author=request.data.get('author', '')
+        )
+        return Response({'id': resource.id, 'message': 'Resource uploaded successfully'}, 
+                       status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
-@permission_classes([CanApproveNotes])
-def pending_notes(request):
-    """Get notes pending approval that current user can approve"""
-    notes = Note.objects.filter(is_approved=False).order_by('-created_at')
+def schemes_list(request):
+    """List all academic schemes"""
+    schemes = Scheme.objects.all().values('id', 'year', 'name', 'description', 'is_active')
+    return Response(list(schemes))
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_scheme(request):
+    """Create new academic scheme"""
+    try:
+        scheme = Scheme.objects.create(
+            year=request.data['year'],
+            name=request.data['name'],
+            description=request.data.get('description', ''),
+            is_active=request.data.get('is_active', True)
+        )
+        return Response({'id': scheme.id, 'message': 'Scheme created successfully'}, 
+                       status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def subjects_by_scheme_semester(request):
+    """Get subjects filtered by scheme and semester"""
+    scheme_id = request.GET.get('scheme')
+    semester = request.GET.get('semester')
     
-    # Filter notes that current user can approve
-    approvable_notes = []
-    for note in notes:
-        if note.can_be_approved_by(request.user):
-            approvable_notes.append(note)
+    subjects = Subject.objects.all()
     
-    return Response({
-        'pending_notes': NoteSerializer(approvable_notes, many=True).data,
-        'count': len(approvable_notes)
-    })
+    if scheme_id:
+        subjects = subjects.filter(scheme_id=scheme_id)
+    if semester:
+        subjects = subjects.filter(semester=semester)
+        
+    subjects_data = list(subjects.values('id', 'name', 'code', 'semester', 'credits'))
+    return Response(subjects_data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_subject(request):
+    """Create new subject"""
+    try:
+        subject = Subject.objects.create(
+            name=request.data['name'],
+            code=request.data['code'],
+            semester=request.data['semester'],
+            credits=request.data.get('credits', 3),
+            scheme_id=request.data.get('scheme'),
+            description=request.data.get('description', '')
+        )
+        return Response({'id': subject.id, 'message': 'Subject created successfully'}, 
+                       status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([])  # Remove authentication requirement
+def download_academic_resource(request, pk):
+    """Download academic resource file"""
+    try:
+        resource = AcademicResource.objects.get(pk=pk, is_approved=True)
+        
+        if not resource.file:
+            return Response({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Increment download count
+        resource.download_count += 1
+        resource.save()
+        
+        # Get the file path
+        file_path = resource.file.path
+        
+        if not os.path.exists(file_path):
+            return Response({'error': 'File not found on disk'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Open and serve the file
+        with open(file_path, 'rb') as f:
+            response = HttpResponse(f.read(), content_type='application/octet-stream')
+            response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
+            return response
+            
+    except AcademicResource.DoesNotExist:
+        return Response({'error': 'Resource not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
