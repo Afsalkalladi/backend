@@ -3,8 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from .models import Alumni
-from .serializers import AlumniSerializer
+from .models import Alumni, TeamMember
+from .serializers import AlumniSerializer, TeamMemberSerializer, TeamMemberListSerializer
 from .permissions import IsAdminOrTechnicalHead
 import openpyxl
 from openpyxl.styles import Font, Alignment
@@ -159,3 +159,74 @@ class AlumniViewSet(viewsets.ModelViewSet):
         )
         response['Content-Disposition'] = 'attachment; filename="alumni_data.xlsx"'
         return response
+
+
+class TeamMemberViewSet(viewsets.ModelViewSet):
+    """
+    Team member management viewset
+    """
+    queryset = TeamMember.objects.all()
+    serializer_class = TeamMemberSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsAdminOrTechnicalHead]
+        else:
+            permission_classes = [permissions.AllowAny]
+        return [permission() for permission in permission_classes]
+    
+    def get_queryset(self):
+        """
+        Filter team members based on query parameters
+        """
+        queryset = TeamMember.objects.all()
+        
+        # Filter by team type
+        team_type = self.request.query_params.get('team_type')
+        if team_type:
+            queryset = queryset.filter(team_type=team_type)
+        
+        # Filter by active status
+        is_active = self.request.query_params.get('is_active')
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        
+        return queryset.order_by('team_type', 'order', 'name')
+    
+    def get_serializer_class(self):
+        """
+        Return different serializers for different actions
+        """
+        if self.action == 'list':
+            return TeamMemberListSerializer
+        return TeamMemberSerializer
+    
+    @action(detail=False, methods=['get'])
+    def eesa_team(self, request):
+        """Get only EESA team members"""
+        members = TeamMember.objects.filter(team_type='eesa', is_active=True).order_by('order', 'name')
+        serializer = TeamMemberListSerializer(members, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def tech_team(self, request):
+        """Get only Tech team members"""
+        members = TeamMember.objects.filter(team_type='tech', is_active=True).order_by('order', 'name')
+        serializer = TeamMemberListSerializer(members, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def active_members(self, request):
+        """Get all active team members grouped by team type"""
+        eesa_members = TeamMember.objects.filter(team_type='eesa', is_active=True).order_by('order', 'name')
+        tech_members = TeamMember.objects.filter(team_type='tech', is_active=True).order_by('order', 'name')
+        
+        data = {
+            'eesa_team': TeamMemberListSerializer(eesa_members, many=True).data,
+            'tech_team': TeamMemberListSerializer(tech_members, many=True).data
+        }
+        return Response(data)

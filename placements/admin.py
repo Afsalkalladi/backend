@@ -77,11 +77,6 @@ class PlacementDriveAdmin(admin.ModelAdmin):
             # Add computed fields to readonly when editing
             readonly.extend(['created_by'])
         return readonly
-    
-    def save_model(self, request, obj, form, change):
-        if not change:  # If creating new object
-            obj.created_by = request.user
-        super().save_model(request, obj, form, change)
 
 
 @admin.register(PlacementApplication)
@@ -142,14 +137,14 @@ class PlacementCoordinatorAdmin(admin.ModelAdmin):
 
 @admin.register(PlacementStatistics)
 class PlacementStatisticsAdmin(admin.ModelAdmin):
-    list_display = ['branch', 'batch_year', 'academic_year', 'total_students', 'total_placed', 'placement_percentage', 'average_package']
-    list_filter = ['academic_year', 'batch_year', 'branch']
-    search_fields = ['branch', 'academic_year']
+    list_display = ['batch_year', 'academic_year', 'total_students', 'total_placed', 'placement_percentage', 'average_package']
+    list_filter = ['academic_year', 'batch_year']
+    search_fields = ['academic_year', 'batch_year']
     readonly_fields = ['placement_percentage', 'created_at', 'updated_at']
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('academic_year', 'batch_year', 'branch')
+            'fields': ('academic_year', 'batch_year')
         }),
         ('Student Statistics', {
             'fields': ('total_students', 'total_placed', 'placement_percentage')
@@ -165,6 +160,19 @@ class PlacementStatisticsAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         })
     )
+    
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        # Set default branch to EEE since it's a department website
+        if 'branch' in form.base_fields and not obj:
+            form.base_fields['branch'].initial = 'Electrical & Electronics Engineering'
+        return form
+    
+    def save_model(self, request, obj, form, change):
+        # Auto-set branch if not provided
+        if not obj.branch:
+            obj.branch = 'Electrical & Electronics Engineering'
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(PlacedStudent)

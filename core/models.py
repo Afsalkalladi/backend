@@ -94,3 +94,41 @@ class Alumni(models.Model):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+
+class TeamMember(models.Model):
+    """Team members for EESA and Tech teams"""
+    
+    TEAM_TYPE_CHOICES = [
+        ('eesa', 'EESA Team'),
+        ('tech', 'Tech Team'),
+    ]
+    
+    # Basic Information
+    name = models.CharField(max_length=100)
+    position = models.CharField(max_length=100, help_text="Role/Position in the team")
+    bio = models.TextField(help_text="Brief description about the member")
+    image = models.ImageField(upload_to='team_members/', blank=True, null=True)
+    
+    # Contact Information
+    email = models.EmailField(blank=True, null=True)
+    linkedin_url = models.URLField(blank=True, null=True)
+    github_url = models.URLField(blank=True, null=True)
+    
+    # Team Classification
+    team_type = models.CharField(max_length=10, choices=TEAM_TYPE_CHOICES)
+    is_active = models.BooleanField(default=True, help_text="Is this member currently active?")
+    order = models.PositiveIntegerField(default=0, help_text="Display order (lower numbers appear first)")
+    
+    # Metadata
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['team_type', 'order', 'name']
+        verbose_name = "Team Member"
+        verbose_name_plural = "Team Members"
+    
+    def __str__(self):
+        return f"{self.name} - {self.position} ({self.get_team_type_display()})"

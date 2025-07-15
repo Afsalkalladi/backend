@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
-from .models import Scheme, Subject, AcademicCategory, AcademicResource, ResourceDownload, Note
+from .models import Scheme, Subject, AcademicCategory, AcademicResource
 
 
 @admin.register(Scheme)
@@ -122,39 +122,6 @@ class AcademicResourceAdmin(admin.ModelAdmin):
             obj.uploaded_by = request.user
         
         # Handle approval
-        if 'is_approved' in form.changed_data and obj.is_approved and not obj.approved_by:
-            obj.approved_by = request.user
-            obj.approved_at = timezone.now()
-        
-        super().save_model(request, obj, form, change)
-
-
-@admin.register(ResourceDownload)
-class ResourceDownloadAdmin(admin.ModelAdmin):
-    list_display = ['resource', 'user', 'downloaded_at', 'ip_address']
-    list_filter = ['downloaded_at', 'resource__category']
-    search_fields = ['resource__title', 'user__username', 'user__email']
-    readonly_fields = ['resource', 'user', 'downloaded_at', 'ip_address']
-    
-    def has_add_permission(self, request):
-        return False
-    
-    def has_change_permission(self, request, obj=None):
-        return False
-
-
-# Legacy Note admin
-@admin.register(Note)
-class LegacyNoteAdmin(admin.ModelAdmin):
-    list_display = ['title', 'subject', 'note_type', 'module_number', 'uploaded_by', 'is_approved', 'created_at']
-    list_filter = ['note_type', 'module_number', 'is_approved', 'subject__scheme', 'created_at']
-    search_fields = ['title', 'description', 'subject__name']
-    readonly_fields = ['created_at', 'updated_at', 'approved_at']
-    
-    def save_model(self, request, obj, form, change):
-        if not change:
-            obj.uploaded_by = request.user
-        
         if 'is_approved' in form.changed_data and obj.is_approved and not obj.approved_by:
             obj.approved_by = request.user
             obj.approved_at = timezone.now()

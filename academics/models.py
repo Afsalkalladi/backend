@@ -114,11 +114,8 @@ class AcademicResource(models.Model):
     ]
     
     EXAM_TYPE_CHOICES = [
-        ('cie1', 'CIE 1'),
-        ('cie2', 'CIE 2'),
-        ('cie3', 'CIE 3'),
-        ('see', 'SEE (Semester End Exam)'),
-        ('makeup', 'Makeup Exam'),
+        ('internal', 'Internal Exam'),
+        ('sem', 'Semester Exam'),
         ('other', 'Other'),
     ]
     

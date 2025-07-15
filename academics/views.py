@@ -68,7 +68,9 @@ def category_detail(request, category_type):
 @permission_classes([])  # Remove authentication requirement
 def academic_resources_list(request):
     """List academic resources with filtering"""
-    resources = AcademicResource.objects.filter(is_approved=True)
+    resources = AcademicResource.objects.filter(is_approved=True).select_related(
+        'category', 'subject', 'uploaded_by'
+    )
     
     # Filter by category type
     category_type = request.GET.get('category_type')
@@ -93,11 +95,28 @@ def academic_resources_list(request):
             Q(description__icontains=search)
         )
     
-    resources_data = list(resources.values(
-        'id', 'title', 'description', 'file', 'file_size',
-        'module_number', 'exam_type', 'exam_year', 'author',
-        'download_count', 'created_at', 'updated_at'
-    ))
+    resources_data = []
+    for resource in resources:
+        resources_data.append({
+            'id': resource.id,
+            'title': resource.title,
+            'description': resource.description,
+            'file': resource.file.url if resource.file else '',
+            'file_size': resource.file_size,
+            'module_number': resource.module_number,
+            'exam_type': resource.exam_type,
+            'exam_year': resource.exam_year,
+            'author': resource.author,
+            'download_count': resource.download_count,
+            'created_at': resource.created_at,
+            'updated_at': resource.updated_at,
+            'category': resource.category.category_type,
+            'category_name': resource.category.name,
+            'subject_name': resource.subject.name,
+            'subject_code': resource.subject.code,
+            'is_featured': resource.is_featured,
+            'uploaded_by_name': f"{resource.uploaded_by.first_name} {resource.uploaded_by.last_name}",
+        })
     return Response(resources_data)
 
 @api_view(['GET'])

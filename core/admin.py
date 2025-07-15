@@ -4,7 +4,7 @@ from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.utils.html import format_html
-from .models import User, Alumni
+from .models import User, Alumni, TeamMember
 import csv
 import io
 
@@ -126,6 +126,51 @@ class AlumniAdmin(admin.ModelAdmin):
         if not obj.created_by:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(TeamMember)
+class TeamMemberAdmin(admin.ModelAdmin):
+    """Admin interface for managing team members"""
+    
+    list_display = ('name', 'position', 'team_type', 'is_active', 'order', 'created_at')
+    list_filter = ('team_type', 'is_active', 'created_at')
+    search_fields = ('name', 'position', 'bio', 'email')
+    ordering = ('team_type', 'order', 'name')
+    
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'position', 'bio', 'image')
+        }),
+        ('Contact Information', {
+            'fields': ('email', 'linkedin_url', 'github_url')
+        }),
+        ('Team Settings', {
+            'fields': ('team_type', 'is_active', 'order')
+        }),
+        ('Metadata', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ('created_by', 'created_at', 'updated_at')
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        # All staff can see all team members
+        return qs
+    
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        # Add help text for ordering
+        if 'order' in form.base_fields:
+            form.base_fields['order'].help_text = 'Lower numbers appear first. Use increments of 10 for easy reordering.'
+        return form
 
 
 # Register all models

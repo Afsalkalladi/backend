@@ -37,6 +37,9 @@ def api_root(request):
             'careers': '/api/careers/',
             'placements': '/api/placements/',
             'gallery': '/api/gallery/',
+            'core': '/api/core/',
+            'alumni': '/api/core/alumni/',
+            'team-members': '/api/core/team-members/',
             'admin': '/eesa-staff-portal/',
         }
     })

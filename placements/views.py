@@ -35,7 +35,7 @@ def companies_list(request):
         if verified_only:
             companies = companies.filter(is_verified=True)
         
-        serializer = CompanyListSerializer(companies, many=True)
+        serializer = CompanySerializer(companies, many=True)
         return Response({
             'companies': serializer.data,
             'count': companies.count()
@@ -299,24 +299,43 @@ def placement_application_detail(request, pk):
 
 # Statistics views
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.AllowAny])  # Changed to allow public access
 def placement_statistics(request):
     """Get placement statistics"""
-    stats = PlacementStatistics.objects.all().order_by('-batch_year', 'branch')
+    stats = PlacementStatistics.objects.all().order_by('-batch_year')
     
     # Apply filters
     batch_year = request.GET.get('batch_year')
     if batch_year:
         stats = stats.filter(batch_year=batch_year)
     
-    branch = request.GET.get('branch')
-    if branch:
-        stats = stats.filter(branch__icontains=branch)
+    academic_year = request.GET.get('academic_year')
+    if academic_year:
+        stats = stats.filter(academic_year=academic_year)
     
-    serializer = PlacementStatisticsSerializer(stats, many=True)
+    # Convert to list with calculated fields
+    results = []
+    for stat in stats:
+        results.append({
+            'id': stat.id,
+            'academic_year': stat.academic_year,
+            'batch_year': stat.batch_year,
+            'branch': stat.branch,
+            'total_students': stat.total_students,
+            'total_placed': stat.total_placed,
+            'placement_percentage': stat.placement_percentage,
+            'highest_package': float(stat.highest_package),
+            'average_package': float(stat.average_package),
+            'median_package': float(stat.median_package),
+            'total_companies_visited': stat.total_companies_visited,
+            'total_offers': stat.total_offers,
+            'created_at': stat.created_at,
+            'updated_at': stat.updated_at
+        })
+    
     return Response({
-        'statistics': serializer.data,
-        'count': stats.count()
+        'statistics': results,
+        'count': len(results)
     })
 
 

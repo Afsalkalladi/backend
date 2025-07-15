@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Alumni
+from .models import Alumni, TeamMember
 
 
 class AlumniSerializer(serializers.ModelSerializer):
@@ -35,4 +35,40 @@ class AlumniListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'full_name', 'year_of_passout', 'current_workplace', 
             'job_title', 'current_location', 'willing_to_mentor'
+        ]
+
+
+class TeamMemberSerializer(serializers.ModelSerializer):
+    """
+    Team member serializer
+    """
+    team_type_display = serializers.CharField(source='get_team_type_display', read_only=True)
+    
+    class Meta:
+        model = TeamMember
+        fields = [
+            'id', 'name', 'position', 'bio', 'image', 'email', 
+            'linkedin_url', 'github_url', 'team_type', 'team_type_display',
+            'is_active', 'order', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at', 'created_by']
+    
+    def create(self, validated_data):
+        """Override create to set created_by"""
+        validated_data['created_by'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class TeamMemberListSerializer(serializers.ModelSerializer):
+    """
+    Team member list serializer for simplified display
+    """
+    team_type_display = serializers.CharField(source='get_team_type_display', read_only=True)
+    
+    class Meta:
+        model = TeamMember
+        fields = [
+            'id', 'name', 'position', 'bio', 'image', 'email',
+            'linkedin_url', 'github_url', 'team_type', 'team_type_display',
+            'is_active', 'order'
         ]
