@@ -66,6 +66,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -180,6 +181,11 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
+# Whitenoise configuration for static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = True
+
 
 # Cloudinary Configuration
 import cloudinary
@@ -223,30 +229,10 @@ if 'RENDER' in os.environ:
     CSRF_COOKIE_SECURE = True
 
 
-# Environment variable validation for production
-if not DEBUG and 'RENDER' in os.environ:
-    # Check for required environment variables in production
-    required_vars = ['SECRET_KEY', 'DATABASE_URL']
-    missing_vars = [var for var in required_vars if not os.environ.get(var)]
-    
-    if missing_vars:
-        raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
-    
-    # Warn about missing Cloudinary variables (not required for static files)
-    cloudinary_vars = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET']
-    missing_cloudinary = [var for var in cloudinary_vars if not os.environ.get(var)]
-    
-    if missing_cloudinary:
-        import warnings
-        warnings.warn(f"Missing Cloudinary environment variables: {', '.join(missing_cloudinary)}. Media uploads will not work.")
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Custom User Model
-AUTH_USER_MODEL = 'accounts.User'
 
 # Django REST Framework settings
 REST_FRAMEWORK = {
