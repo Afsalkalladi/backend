@@ -47,6 +47,7 @@ THIRD_PARTY_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'django_filters',
     'cloudinary_storage',
     'cloudinary',
 ]
@@ -112,8 +113,13 @@ elif all([
     config('DB_USER', default=None),
     config('DB_PASSWORD', default=None),
     config('DB_HOST', default=None),
+]) and not any([
+    config('DB_NAME', default='').startswith('your_'),
+    config('DB_USER', default='').startswith('your_'),
+    config('DB_PASSWORD', default='').startswith('your_'),
+    config('DB_HOST', default='').startswith('your_'),
 ]):
-    # Use PostgreSQL (Supabase) for manual deployment
+    # Use PostgreSQL (Supabase) for manual deployment - only if not placeholder values
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
