@@ -99,27 +99,14 @@ WSGI_APPLICATION = 'eesa_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Check if DATABASE_URL is provided (Render deployment)
-if 'DATABASE_URL' in os.environ:
-    # Use DATABASE_URL for Render deployment
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=os.environ.get('DATABASE_URL'),
-            conn_max_age=600
-        )
-    }
-elif all([
+# Production Database Configuration (Supabase PostgreSQL)
+if all([
     config('DB_NAME', default=None),
     config('DB_USER', default=None),
     config('DB_PASSWORD', default=None),
     config('DB_HOST', default=None),
-]) and not any([
-    config('DB_NAME', default='').startswith('your_'),
-    config('DB_USER', default='').startswith('your_'),
-    config('DB_PASSWORD', default='').startswith('your_'),
-    config('DB_HOST', default='').startswith('your_'),
 ]):
-    # Use PostgreSQL (Supabase) for manual deployment - only if not placeholder values
+    # Use PostgreSQL (Supabase) for production
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -128,21 +115,16 @@ elif all([
             'PASSWORD': config('DB_PASSWORD'),
             'HOST': config('DB_HOST'),
             'PORT': config('DB_PORT', default='5432'),
+            'OPTIONS': {
+                'sslmode': 'require',
+                'connect_timeout': 60,
+                'application_name': 'eesa_backend'
+            }
         }
     }
 else:
-    # Fallback to SQLite for development
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-
-# Configure database URL for Render deployment
-DATABASE_URL = config('DATABASE_URL', default=None)
-if DATABASE_URL:
-    DATABASES['default'] = dj_database_url.config(default=DATABASE_URL, conn_max_age=600, ssl_require=True)
+    # Error if database credentials are not provided
+    raise ValueError("Database configuration is required. Please set DB_NAME, DB_USER, DB_PASSWORD, and DB_HOST environment variables.")
 
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.User'
