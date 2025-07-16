@@ -19,15 +19,15 @@ pip install -r requirements.txt
 
 # Run database migrations
 echo "🗄️ Running database migrations..."
-python manage.py migrate --settings=eesa_backend.settings_production
+python manage.py migrate
 
 # Collect static files
 echo "📁 Collecting static files..."
-python manage.py collectstatic --noinput --settings=eesa_backend.settings_production
+python manage.py collectstatic --noinput
 
 # Create superuser if it doesn't exist
 echo "👤 Creating superuser..."
-python manage.py shell --settings=eesa_backend.settings_production << EOF
+python manage.py shell << EOF
 from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(email='admin@eesa.com').exists():

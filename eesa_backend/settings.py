@@ -176,9 +176,14 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
+
+# Only add STATICFILES_DIRS if the static directory exists and is not empty
+import os
+static_dir = BASE_DIR / 'static'
+if static_dir.exists() and any(static_dir.iterdir()):
+    STATICFILES_DIRS = [static_dir]
+else:
+    STATICFILES_DIRS = []
 
 
 # Cloudinary Configuration

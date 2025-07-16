@@ -3,7 +3,7 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-ENV DJANGO_SETTINGS_MODULE=eesa_backend.settings_production
+ENV DJANGO_SETTINGS_MODULE=eesa_backend.settings
 
 # Set work directory
 WORKDIR /app
@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Collect static files
-RUN python manage.py collectstatic --noinput --settings=eesa_backend.settings_production
+RUN python manage.py collectstatic --noinput
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash app \
