@@ -18,13 +18,13 @@ services:
       - key: DB_NAME
         value: "postgres"
       - key: DB_USER
-        value: "postgres"
+        sync: false
       - key: DB_PASSWORD
         sync: false
       - key: DB_HOST
         sync: false
       - key: DB_PORT
-        value: "5432"
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
@@ -32,4 +32,4 @@ services:
       - key: CLOUDINARY_API_SECRET
         sync: false
       - key: CORS_ALLOWED_ORIGINS
-        value: "https://your-frontend-domain.com,http://localhost:3000,http://127.0.0.1:3000"
+        sync: false
