@@ -176,14 +176,9 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# Only add STATICFILES_DIRS if the static directory exists and is not empty
-import os
-static_dir = BASE_DIR / 'static'
-if static_dir.exists() and any(static_dir.iterdir()):
-    STATICFILES_DIRS = [static_dir]
-else:
-    STATICFILES_DIRS = []
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
 
 
 # Cloudinary Configuration
@@ -192,26 +187,28 @@ import cloudinary.uploader
 import cloudinary.api
 
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': config('CLOUDINARY_API_KEY'),
-    'API_SECRET': config('CLOUDINARY_API_SECRET'),
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default='dummy'),
+    'API_KEY': config('CLOUDINARY_API_KEY', default='dummy'),
+    'API_SECRET': config('CLOUDINARY_API_SECRET', default='dummy'),
 }
 
-# Configure cloudinary
-cloudinary.config(
-    cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
-    api_key=CLOUDINARY_STORAGE['API_KEY'],
-    api_secret=CLOUDINARY_STORAGE['API_SECRET'],
-    secure=True
-)
+# Configure cloudinary only if we have real credentials
+if CLOUDINARY_STORAGE['CLOUD_NAME'] != 'dummy':
+    cloudinary.config(
+        cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
+        api_key=CLOUDINARY_STORAGE['API_KEY'],
+        api_secret=CLOUDINARY_STORAGE['API_SECRET'],
+        secure=True
+    )
 
 # Media files (uploads)
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+if CLOUDINARY_STORAGE['CLOUD_NAME'] != 'dummy':
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 MEDIA_URL = '/media/'
 
 
 # For production, use Cloudinary for static files too
-if not DEBUG:
+if not DEBUG and CLOUDINARY_STORAGE['CLOUD_NAME'] != 'dummy':
     STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
 
 # Render-specific settings
@@ -225,6 +222,23 @@ if 'RENDER' in os.environ:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
+
+# Environment variable validation for production
+if not DEBUG and 'RENDER' in os.environ:
+    # Check for required environment variables in production
+    required_vars = ['SECRET_KEY', 'DATABASE_URL']
+    missing_vars = [var for var in required_vars if not os.environ.get(var)]
+    
+    if missing_vars:
+        raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+    
+    # Warn about missing Cloudinary variables (not required for static files)
+    cloudinary_vars = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET']
+    missing_cloudinary = [var for var in cloudinary_vars if not os.environ.get(var)]
+    
+    if missing_cloudinary:
+        import warnings
+        warnings.warn(f"Missing Cloudinary environment variables: {', '.join(missing_cloudinary)}. Media uploads will not work.")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

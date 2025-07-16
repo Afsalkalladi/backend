@@ -25,8 +25,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY . .
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
+# Create staticfiles directory and ensure static directory exists
+RUN mkdir -p staticfiles static
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash app \

@@ -227,6 +227,7 @@ media/
 # Static files (collected static files)
 staticfiles/
 !staticfiles/.gitkeep
+!static/.gitkeep
 
 # Log files
 *.log
