@@ -3,7 +3,8 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.http import HttpResponse
 from django.contrib import messages
 from django.shortcuts import redirect
-from .models import User, Alumni, AuditLog, TeamMember
+from django.utils.html import format_html
+from .models import User, AuditLog, TeamMember
 from .admin_base import AuditableAdmin
 import csv
 import io
@@ -40,9 +41,7 @@ class UserAdmin(BaseUserAdmin, AuditableAdmin):
         if groups:
             group_names = []
             for group in groups:
-                if 'Alumni' in group.name:
-                    group_names.append(f'<span style="color: #28a745;">{group.name}</span>')
-                elif 'Academic' in group.name:
+                if 'Academic' in group.name:
                     group_names.append(f'<span style="color: #17a2b8;">{group.name}</span>')
                 elif 'Events' in group.name:
                     group_names.append(f'<span style="color: #ffc107;">{group.name}</span>')
@@ -71,135 +70,25 @@ class UserAdmin(BaseUserAdmin, AuditableAdmin):
         return True
 
 
-@admin.register(Alumni)
-class AlumniAdmin(AuditableAdmin):
-    """Alumni management with CSV bulk import"""
-    
-    list_display = ('full_name', 'email', 'branch', 'year_of_passout', 'current_workplace', 'willing_to_mentor', 'created_at')
-    list_filter = ('branch', 'year_of_passout', 'willing_to_mentor', 'year_of_admission', 'created_at')
-    search_fields = ('first_name', 'last_name', 'email', 'student_id', 'current_workplace')
-    readonly_fields = ('created_by', 'created_at', 'updated_at')
-    ordering = ('-year_of_passout', 'last_name')
-    
-    fieldsets = (
-        ('Personal Information', {
-            'fields': ('first_name', 'last_name', 'email', 'mobile_number')
-        }),
-        ('Academic Information', {
-            'fields': ('student_id', 'branch', 'year_of_admission', 'year_of_passout', 'cgpa')
-        }),
-        ('Professional Information', {
-            'fields': ('current_workplace', 'job_title', 'current_location', 'linkedin_url')
-        }),
-        ('Additional Information', {
-            'fields': ('achievements', 'willing_to_mentor')
-        }),
-        ('Metadata', {
-            'fields': ('created_by', 'created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    
-    actions = ['export_to_csv', 'bulk_import_csv']
-    
-    def bulk_import_csv(self, request, queryset):
-        """Bulk import alumni from CSV file"""
-        if 'csv_file' not in request.FILES:
-            self.message_user(request, 'Please upload a CSV file.', level=messages.ERROR)
-            return redirect('admin:accounts_alumni_changelist')
-        
-        csv_file = request.FILES['csv_file']
-        
-        try:
-            decoded_file = csv_file.read().decode('utf-8')
-            io_string = io.StringIO(decoded_file)
-            reader = csv.DictReader(io_string)
-            
-            created_count = 0
-            error_count = 0
-            errors = []
-            
-            for row_num, row in enumerate(reader, start=2):
-                try:
-                    alumni = Alumni(
-                        first_name=row.get('first_name', '').strip(),
-                        last_name=row.get('last_name', '').strip(),
-                        email=row.get('email', '').strip(),
-                        student_id=row.get('student_id', '').strip(),
-                        branch=row.get('branch', '').strip(),
-                        year_of_admission=int(row.get('year_of_admission', 0)),
-                        year_of_passout=int(row.get('year_of_passout', 0)),
-                        mobile_number=row.get('mobile_number', '').strip() or None,
-                        cgpa=float(row.get('cgpa', 0)) if row.get('cgpa') else None,
-                        current_workplace=row.get('current_workplace', '').strip() or None,
-                        job_title=row.get('job_title', '').strip() or None,
-                        current_location=row.get('current_location', '').strip() or None,
-                        linkedin_url=row.get('linkedin_url', '').strip() or None,
-                        achievements=row.get('achievements', '').strip() or None,
-                        willing_to_mentor=row.get('willing_to_mentor', '').lower() in ['true', '1', 'yes'],
-                        created_by=request.user
-                    )
-                    alumni.full_clean()
-                    alumni.save()
-                    created_count += 1
-                    
-                except Exception as e:
-                    error_count += 1
-                    errors.append(f"Row {row_num}: {str(e)}")
-            
-            if created_count > 0:
-                self.message_user(request, f'Successfully imported {created_count} alumni records.', level=messages.SUCCESS)
-            if error_count > 0:
-                self.message_user(request, f'{error_count} records failed to import. First 5 errors: {"; ".join(errors[:5])}', level=messages.WARNING)
-                
-        except Exception as e:
-            self.message_user(request, f'Error processing CSV file: {str(e)}', level=messages.ERROR)
-    
-    bulk_import_csv.short_description = 'Import alumni from CSV file'
-    
-    def export_to_csv(self, request, queryset):
-        """Export selected alumni to CSV"""
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=alumni_export.csv'
-        
-        writer = csv.writer(response)
-        writer.writerow([
-            'first_name', 'last_name', 'email', 'mobile_number', 'student_id', 'branch',
-            'year_of_admission', 'year_of_passout', 'cgpa', 'current_workplace', 'job_title',
-            'current_location', 'linkedin_url', 'achievements', 'willing_to_mentor'
-        ])
-        
-        for alumni in queryset:
-            writer.writerow([
-                alumni.first_name, alumni.last_name, alumni.email, alumni.mobile_number,
-                alumni.student_id, alumni.branch, alumni.year_of_admission, alumni.year_of_passout,
-                alumni.cgpa, alumni.current_workplace, alumni.job_title, alumni.current_location,
-                alumni.linkedin_url, alumni.achievements, alumni.willing_to_mentor
-            ])
-        
-        return response
-    
-    export_to_csv.short_description = 'Export selected alumni to CSV'
-    
-    def changelist_view(self, request, extra_context=None):
-        """Add CSV import instructions to changelist"""
-        extra_context = extra_context or {}
-        extra_context['csv_format'] = '''
-        CSV Format: first_name,last_name,email,mobile_number,student_id,branch,year_of_admission,year_of_passout,cgpa,current_workplace,job_title,current_location,linkedin_url,achievements,willing_to_mentor
-        Example: John,Doe,john@example.com,9876543210,18CS001,CSE,2018,2022,8.5,Google,Engineer,Bangalore,linkedin.com/in/johndoe,Winner of hackathon,true
-        '''
-        return super().changelist_view(request, extra_context=extra_context)
-
-
 @admin.register(TeamMember)
 class TeamMemberAdmin(AuditableAdmin):
-    """Team member management with CSV bulk import"""
+    """Team member management with separate EESA and Tech teams"""
     
-    list_display = ('name', 'position', 'team_type', 'is_active', 'order', 'created_at')
+    list_display = ('name', 'position', 'get_team_display', 'is_active', 'order', 'created_at')
     list_filter = ('team_type', 'is_active', 'created_at')
     search_fields = ('name', 'position', 'bio', 'email')
     ordering = ('team_type', 'order', 'name')
     readonly_fields = ('created_by', 'created_at', 'updated_at')
+    
+    def get_team_display(self, obj):
+        """Display team type with color coding"""
+        if obj.team_type == 'eesa':
+            return format_html('<span style="color: #28a745; font-weight: bold;">EESA Team</span>')
+        elif obj.team_type == 'tech':
+            return format_html('<span style="color: #007bff; font-weight: bold;">Tech Team</span>')
+        return obj.get_team_type_display()
+    get_team_display.short_description = 'Team'
+    get_team_display.admin_order_field = 'team_type'
     
     fieldsets = (
         ('Basic Information', {
@@ -208,8 +97,9 @@ class TeamMemberAdmin(AuditableAdmin):
         ('Contact Information', {
             'fields': ('email', 'linkedin_url', 'github_url')
         }),
-        ('Team Settings', {
-            'fields': ('team_type', 'is_active', 'order')
+        ('Team Classification', {
+            'fields': ('team_type', 'is_active', 'order'),
+            'description': 'Choose EESA Team for association members or Tech Team for technical/development members'
         }),
         ('Metadata', {
             'fields': ('created_by', 'created_at', 'updated_at'),
@@ -291,11 +181,22 @@ class TeamMemberAdmin(AuditableAdmin):
     export_to_csv.short_description = 'Export selected team members to CSV'
     
     def changelist_view(self, request, extra_context=None):
-        """Add CSV import instructions to changelist"""
+        """Add team-specific instructions to changelist"""
         extra_context = extra_context or {}
-        extra_context['csv_format'] = '''
-        CSV Format: name,position,bio,email,linkedin_url,github_url,team_type,is_active,order
-        Example: John Doe,President,Leading the team,john@example.com,linkedin.com/in/johndoe,github.com/johndoe,eesa,true,1
+        extra_context['team_info'] = '''
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+            <h3>Team Management</h3>
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <h4 style="color: #28a745;">EESA Team</h4>
+                    <p>Association members, office bearers, event coordinators, and student representatives.</p>
+                </div>
+                <div style="flex: 1;">
+                    <h4 style="color: #007bff;">Tech Team</h4>
+                    <p>Developers, designers, technical coordinators, and IT support members.</p>
+                </div>
+            </div>
+        </div>
         '''
         return super().changelist_view(request, extra_context=extra_context)
 

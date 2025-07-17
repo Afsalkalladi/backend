@@ -44,34 +44,6 @@ class SubjectAdmin(PermissionRestrictedAdmin):
     resource_count.short_description = 'Resources'
 
 
-@admin.register(AcademicCategory)
-class AcademicCategoryAdmin(admin.ModelAdmin):
-    """Admin for the 3 fixed academic categories - limited editing"""
-    list_display = ['name', 'category_type', 'is_active', 'display_order', 'resource_count']
-    list_filter = ['category_type', 'is_active']
-    search_fields = ['name', 'description']
-    readonly_fields = ['name', 'slug', 'category_type', 'created_at', 'updated_at']
-    list_editable = ['is_active', 'display_order']
-    
-    def resource_count(self, obj):
-        return obj.resources.count()
-    resource_count.short_description = 'Resources'
-    
-    def has_add_permission(self, request):
-        """Only allow 3 categories to exist"""
-        return AcademicCategory.objects.count() < 3
-    
-    def has_delete_permission(self, request, obj=None):
-        """Don't allow deletion of core categories"""
-        return False
-    
-    def get_readonly_fields(self, request, obj=None):
-        """Make core fields read-only"""
-        if obj:  # Editing existing
-            return ['name', 'slug', 'category_type', 'created_at', 'updated_at']
-        return ['created_at', 'updated_at']
-
-
 @admin.register(AcademicResource)
 class AcademicResourceAdmin(PermissionRestrictedAdmin):
     list_display = [

@@ -30,16 +30,13 @@ def api_root(request):
         'version': '1.0.0',
         'endpoints': {
             'auth': '/api/auth/',
-            'students': '/api/students/',
             'academics': '/api/academics/',
             'projects': '/api/projects/',
             'events': '/api/events/',
             'careers': '/api/careers/',
             'placements': '/api/placements/',
             'gallery': '/api/gallery/',
-            'core': '/api/core/',
-            'alumni': '/api/core/alumni/',
-            'team-members': '/api/core/team-members/',
+            'alumni': '/api/alumni/',
             'admin': '/eesa/',
         }
     })
@@ -51,13 +48,14 @@ urlpatterns = [
     
     # API endpoints
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/accounts/', include('accounts.urls')),  # Alumni and team members
+    path('api/accounts/', include('accounts.urls')),
     path('api/academics/', include('academics.urls')),
     path('api/projects/', include('projects.urls')),
     path('api/events/', include('events.urls')),
     path('api/placements/', include('placements.urls')),
     path('api/careers/', include('careers.urls')),
     path('api/gallery/', include('gallery.urls')),
+    path('api/alumni/', include('alumni.urls')),
 ]
 
 # Serve media files during development

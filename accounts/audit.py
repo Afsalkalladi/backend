@@ -16,13 +16,17 @@ def log_action(user, action, obj, changes=None, request=None):
     if not user or not user.is_authenticated:
         return
     
+    # Only log if object has a primary key (i.e., has been saved)
+    if not obj.pk:
+        return
+    
     content_type = ContentType.objects.get_for_model(obj)
     
     audit_data = {
         'user': user,
         'action': action,
         'content_type': content_type,
-        'object_id': obj.pk,
+        'object_id': str(obj.pk),  # Convert to string to handle UUIDs
         'object_repr': str(obj)[:200],
         'changes': changes,
     }

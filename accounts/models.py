@@ -30,52 +30,6 @@ class User(AbstractUser):
         return self.is_superuser or self.groups.exists()
 
 
-class Alumni(models.Model):
-    """Alumni data managed by staff only"""
-    
-    # Personal Information
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
-    email = models.EmailField(unique=True)
-    mobile_number = models.CharField(
-        max_length=15,
-        validators=[RegexValidator(regex=r'^\+?1?\d{9,15}$', message="Enter a valid mobile number")]
-    )
-    
-    # Academic Information
-    student_id = models.CharField(max_length=20, blank=True, null=True)
-    branch = models.CharField(max_length=100)
-    year_of_admission = models.PositiveIntegerField()
-    year_of_passout = models.PositiveIntegerField()
-    cgpa = models.DecimalField(max_digits=4, decimal_places=2, blank=True, null=True)
-    
-    # Professional Information
-    current_workplace = models.CharField(max_length=200, blank=True, null=True)
-    job_title = models.CharField(max_length=100, blank=True, null=True)
-    current_location = models.CharField(max_length=100, blank=True, null=True)
-    linkedin_url = models.URLField(blank=True, null=True)
-    
-    # Additional Information
-    achievements = models.TextField(blank=True, help_text="Notable achievements and awards")
-    willing_to_mentor = models.BooleanField(default=False)
-    
-    # Metadata
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['-year_of_passout', 'last_name', 'first_name']
-        verbose_name_plural = "Alumni"
-    
-    def __str__(self):
-        return f"{self.first_name} {self.last_name} ({self.year_of_passout})"
-    
-    @property
-    def full_name(self):
-        return f"{self.first_name} {self.last_name}"
-
-
 class EventRegistration(models.Model):
     """Public event registration - no login required"""
     

@@ -48,18 +48,19 @@ THIRD_PARTY_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
-    'cloudinary_storage',
     'cloudinary',
+    'cloudinary_storage',
 ]
 
 LOCAL_APPS = [
-    'accounts',
-    'academics',
-    'projects',
-    'events',
-    'careers',
-    'placements',
-    'gallery',
+    'accounts.apps.AccountsConfig',
+    'academics.apps.AcademicsConfig',
+    'careers.apps.CareersConfig',
+    'events.apps.EventsConfig',
+    'gallery.apps.GalleryConfig',
+    'placements.apps.PlacementsConfig',
+    'projects.apps.ProjectsConfig',
+    'alumni.apps.AlumniConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -81,10 +82,11 @@ ROOT_URLCONF = 'eesa_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -96,63 +98,33 @@ TEMPLATES = [
 WSGI_APPLICATION = 'eesa_backend.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-# Check if DATABASE_URL is provided (Render deployment)
-if 'DATABASE_URL' in os.environ:
-    # Use DATABASE_URL for Render deployment
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=os.environ.get('DATABASE_URL'),
-            conn_max_age=600,
-            ssl_require=True
-        )
-    }
-elif all([
-    config('DB_NAME', default=None),
-    config('DB_USER', default=None),
-    config('DB_PASSWORD', default=None),
-    config('DB_HOST', default=None),
-]) and not any([
-    config('DB_NAME', default='').startswith('your_'),
-    config('DB_USER', default='').startswith('your_'),
-    config('DB_PASSWORD', default='').startswith('your_'),
-    config('DB_HOST', default='').startswith('your_'),
-]):
-    # Use PostgreSQL (Supabase) for production - only if not placeholder values
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('DB_NAME'),
-            'USER': config('DB_USER'),
-            'PASSWORD': config('DB_PASSWORD'),
-            'HOST': config('DB_HOST'),
-            'PORT': config('DB_PORT', default='5432'),
-            'OPTIONS': {
-                'sslmode': 'require',
-                'connect_timeout': 60,
-                'application_name': 'eesa_backend'
-            }
-        }
-    }
-else:
-    # Fallback to SQLite for development only
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-
-# Configure database URL for Render deployment (overrides above if present)
+# Database configuration
+# Use dj_database_url for Render DATABASE_URL or build from Supabase credentials
 DATABASE_URL = config('DATABASE_URL', default=None)
 if DATABASE_URL:
-    DATABASES['default'] = dj_database_url.config(
-        default=DATABASE_URL, 
-        conn_max_age=600, 
-        ssl_require=True
-    )
+    DATABASES = {
+        'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600, ssl_require=True)
+    }
+else:
+    db_name = config('DB_NAME', default=None)
+    db_user = config('DB_USER', default=None)
+    db_pass = config('DB_PASSWORD', default=None)
+    db_host = config('DB_HOST', default=None)
+    db_port = config('DB_PORT', default='5432')
+    if db_name and db_user and db_pass and db_host and not db_name.startswith('your_'):
+        # Build Postgres URL for Supabase
+        url = f"postgres://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+        DATABASES = {
+            'default': dj_database_url.config(default=url, conn_max_age=600, ssl_require=True)
+        }
+    else:
+        # Fallback to SQLite for local development
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
 
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.User'
@@ -197,7 +169,7 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-# Whitenoise configuration for static files
+# Whitenoise configuration for static files (default for local)
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = True
@@ -222,20 +194,20 @@ if CLOUDINARY_STORAGE['CLOUD_NAME'] != 'dummy':
         api_secret=CLOUDINARY_STORAGE['API_SECRET'],
         secure=True
     )
-
-# Media files (uploads)
-if CLOUDINARY_STORAGE['CLOUD_NAME'] != 'dummy':
+    
+    # Use Cloudinary for media files when configured
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    
+    # Use Cloudinary for static files in production when not DEBUG
+    if not DEBUG:
+        STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
+
 MEDIA_URL = '/media/'
 
 
-# For production, use Cloudinary for static files too
-if not DEBUG and CLOUDINARY_STORAGE['CLOUD_NAME'] != 'dummy':
-    STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
-
 # Render-specific settings
 if 'RENDER' in os.environ:
-    ALLOWED_HOSTS.append(os.environ.get('RENDER_EXTERNAL_HOSTNAME'))
+    ALLOWED_HOSTS.append(os.environ.get('RENDER_EXTERNAL_HOSTNAME', ''))
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_HSTS_SECONDS = 31536000  # 1 year

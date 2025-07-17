@@ -1,0 +1,32 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        .csv-upload-btn {
+            background: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 13px;
+            margin-left: 10px;
+        }
+        .csv-upload-btn:hover {
+            background: #218838;
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+{% endblock %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a href="{{ csv_upload_url }}" class="csv-upload-btn">
+            📁 Upload CSV
+        </a>
+    </li>
+{% endblock %}
