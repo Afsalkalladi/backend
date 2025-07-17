@@ -23,7 +23,7 @@ class AlumniAdmin(PermissionRestrictedAdmin, AuditableAdmin):
     ]
     search_fields = [
         'full_name', 'email', 'student_id', 'current_company',
-        'current_designation'
+        'job_title'
     ]
     readonly_fields = [
         'id', 'years_since_graduation', 'batch_name',
@@ -43,8 +43,8 @@ class AlumniAdmin(PermissionRestrictedAdmin, AuditableAdmin):
         }),
         ('Current Status', {
             'fields': (
-                'employment_status', 'current_designation', 'current_company',
-                'current_location', 'current_salary_range', 'linkedin_profile'
+                'employment_status', 'job_title', 'current_company',
+                'current_location', 'linkedin_profile'
             )
         }),
         ('Additional Information', {
