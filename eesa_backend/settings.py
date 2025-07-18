@@ -83,7 +83,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'eesa_backend.wsgi.application'
 
-# Database configuration - IMPROVED VERSION
+# Database configuration - SIMPLIFIED VERSION
 DATABASE_URL = config('DATABASE_URL', default=None)
 
 if DATABASE_URL:
@@ -95,15 +95,6 @@ if DATABASE_URL:
             conn_health_checks=True,
         )
     }
-    # Apply additional PostgreSQL optimizations for cursor error prevention
-    if 'postgresql' in DATABASE_URL.lower() or 'postgres' in DATABASE_URL.lower():
-        DATABASES['default']['OPTIONS'] = {
-            'sslmode': 'require',
-            'connect_timeout': 10,
-            'options': '-c default_transaction_isolation=read_committed'
-        }
-        DATABASES['default']['AUTOCOMMIT'] = True
-        DATABASES['default']['ATOMIC_REQUESTS'] = False
 else:
     # Build from individual environment variables
     db_name = config('DB_NAME', default=None)
@@ -124,13 +115,9 @@ else:
                 'PORT': db_port,
                 'OPTIONS': {
                     'sslmode': 'require',
-                    'connect_timeout': 10,
-                    'options': '-c default_transaction_isolation=read_committed'
                 },
                 'CONN_MAX_AGE': 600,
                 'CONN_HEALTH_CHECKS': True,
-                'AUTOCOMMIT': True,
-                'ATOMIC_REQUESTS': False,
             }
         }
     else:
