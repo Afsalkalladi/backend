@@ -16,31 +16,34 @@ echo "DB_PASSWORD: ${DB_PASSWORD:+Set (${#DB_PASSWORD} chars)}"
 echo "ALLOWED_HOSTS: ${ALLOWED_HOSTS:-Not Set}"
 echo "CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-Not Set}"
 
-# Validate Supabase configuration
-echo "🔍 Validating Supabase configuration..."
-if [ -z "$DB_HOST" ] || [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ]; then
-    echo "❌ Missing required Supabase database variables!"
-    echo "   Required: DB_HOST, DB_NAME, DB_USER, DB_PASSWORD"
-    echo "   Current values:"
-    echo "   DB_HOST: ${DB_HOST:-MISSING}"
-    echo "   DB_NAME: ${DB_NAME:-MISSING}"
-    echo "   DB_USER: ${DB_USER:+SET}"
-    echo "   DB_PASSWORD: ${DB_PASSWORD:+SET}"
-    exit 1
-else
-    echo "✅ All Supabase database variables are set"
-    echo "   Using Supabase pooler: ${DB_HOST}"
-    echo "   Port: ${DB_PORT}"
-fi
-
-# Install dependencies
+# Install dependencies first
 echo "📦 Installing Python dependencies..."
 pip install -r requirements.txt
 
-# Test Supabase connection and show the constructed URL
-echo "🔍 Testing Supabase connection..."
+# Upgrade pip and install additional packages that might be missing
+pip install --upgrade pip
+pip install psycopg2-binary dj-database-url
+
+# Validate database configuration
+echo "🔍 Validating database configuration..."
+if [ -n "$DATABASE_URL" ]; then
+    echo "✅ Using DATABASE_URL for connection"
+elif [ -n "$DB_HOST" ] && [ -n "$DB_NAME" ] && [ -n "$DB_USER" ] && [ -n "$DB_PASSWORD" ]; then
+    echo "✅ Using individual DB variables"
+    echo "   Host: ${DB_HOST}"
+    echo "   Database: ${DB_NAME}"
+    echo "   Port: ${DB_PORT:-5432}"
+else
+    echo "❌ Missing database configuration!"
+    echo "   Either set DATABASE_URL or all of: DB_HOST, DB_NAME, DB_USER, DB_PASSWORD"
+    exit 1
+fi
+
+# Test database connection with better error handling
+echo "🔍 Testing database connection..."
 python manage.py shell -c "
 import os
+import sys
 from django.db import connection
 from django.conf import settings
 
@@ -53,125 +56,80 @@ try:
     print('  Host:', db_config['HOST'])
     print('  Port:', db_config['PORT'])
     print('  User:', db_config['USER'])
-    print('  SSL Required:', db_config.get('OPTIONS', {}).get('sslmode', 'Not set'))
     
     # Test the actual connection
-    cursor = connection.cursor()
-    cursor.execute('SELECT version();')
-    version = cursor.fetchone()
-    print('✅ Successfully connected to Supabase PostgreSQL')
-    print('   Version:', version[0])
-    
-    # Test basic query
-    cursor.execute('SELECT current_database(), current_user;')
-    db_info = cursor.fetchone()
-    print('   Connected to database:', db_info[0])
-    print('   Connected as user:', db_info[1])
-    
+    with connection.cursor() as cursor:
+        cursor.execute('SELECT version();')
+        version = cursor.fetchone()
+        print('✅ Successfully connected to PostgreSQL')
+        print('   Version:', version[0])
+        
+        # Test basic query
+        cursor.execute('SELECT current_database(), current_user;')
+        db_info = cursor.fetchone()
+        print('   Connected to database:', db_info[0])
+        print('   Connected as user:', db_info[1])
+        
+        # Check if we can create tables (permissions test)
+        cursor.execute('CREATE TABLE IF NOT EXISTS test_connection (id SERIAL PRIMARY KEY);')
+        cursor.execute('DROP TABLE IF EXISTS test_connection;')
+        print('✅ Database permissions verified')
+        
 except Exception as e:
-    print('❌ Supabase connection failed:', str(e))
-    print('   Check your environment variables:')
-    print('   DB_HOST:', os.environ.get('DB_HOST', 'NOT SET'))
-    print('   DB_PORT:', os.environ.get('DB_PORT', 'NOT SET'))
-    print('   DB_NAME:', os.environ.get('DB_NAME', 'NOT SET'))
-    print('   DB_USER:', os.environ.get('DB_USER', 'NOT SET')[:10] + '...' if os.environ.get('DB_USER') else 'NOT SET')
-    print('   DB_PASSWORD:', 'SET' if os.environ.get('DB_PASSWORD') else 'NOT SET')
-    raise
+    print('❌ Database connection failed:', str(e))
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
 "
 
-# Wait for Supabase to be ready
-echo "⏳ Waiting for Supabase to be ready..."
-for i in {1..5}; do
-    if python manage.py check --database default > /dev/null 2>&1; then
-        echo "✅ Supabase ready on attempt $i"
-        break
-    else
-        echo "⏳ Supabase not ready (attempt $i/5), waiting 2 seconds..."
-        sleep 2
-    fi
-    
-    if [ $i -eq 5 ]; then
-        echo "❌ Supabase not ready after 5 attempts"
-        echo "   This might be a network issue or incorrect credentials"
-        echo "   Continuing with migration attempt..."
-    fi
-done
+# Clear any existing migration files that might be corrupted
+echo "🧹 Cleaning migration cache..."
+find . -path "*/migrations/*.pyc" -delete
+find . -path "*/migrations/__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
-# Show current database settings
-echo "🔍 Database configuration check..."
-python manage.py shell -c "
-from django.conf import settings
-from django.db import connection
-print('Database engine:', settings.DATABASES['default']['ENGINE'])
-print('Database name:', settings.DATABASES['default']['NAME'])
-print('Database host:', settings.DATABASES['default'].get('HOST', 'Not set'))
-print('Database port:', settings.DATABASES['default'].get('PORT', 'Not set'))
-"
+# Check Django setup
+echo "🔍 Checking Django configuration..."
+python manage.py check --deploy
 
-# Create migrations for all apps (but don't force regenerate)
-echo "🔄 Making migrations..."
+# Make migrations for Django core apps first
+echo "📋 Making migrations for Django core apps..."
+python manage.py makemigrations contenttypes auth sessions admin --verbosity=1
+
+# Make migrations for custom apps
+echo "📋 Making migrations for custom apps..."
 APPS=("accounts" "academics" "careers" "events" "gallery" "placements" "projects" "alumni")
 
 for app in "${APPS[@]}"; do
     echo "📋 Making migrations for $app..."
-    if python manage.py makemigrations $app --dry-run --verbosity=0 | grep -q "No changes detected"; then
-        echo "   ✅ No changes needed for $app"
-    else
-        python manage.py makemigrations $app --verbosity=1
-        echo "   ✅ Created migrations for $app"
-    fi
+    python manage.py makemigrations $app --verbosity=1 || echo "⚠️ No migrations needed for $app"
 done
 
-# Show migration status before applying
-echo "🔍 Current migration status..."
-python manage.py showmigrations
+# Show all migrations before applying
+echo "🔍 Migration plan:"
+python manage.py showmigrations --plan
 
-# Apply migrations with detailed error handling
-echo "🗄️ Running database migrations..."
-if python manage.py migrate --no-input --verbosity=2; then
-    echo "✅ All migrations applied successfully"
-else
-    echo "❌ Migration failed! Trying step-by-step approach..."
-    
-    # First, try to create the database schema
-    echo "🔄 Checking if database schema exists..."
-    python manage.py shell -c "
-from django.db import connection
-try:
-    cursor = connection.cursor()
-    cursor.execute('CREATE SCHEMA IF NOT EXISTS public;')
-    cursor.execute('GRANT ALL ON SCHEMA public TO public;')
-    cursor.execute('GRANT ALL ON SCHEMA public TO postgres;')
-    print('✅ Database schema ready')
-except Exception as e:
-    print('⚠️ Schema setup warning:', e)
-"
-    
-    # Try migrating core Django apps first
-    echo "🔄 Migrating Django core apps..."
-    python manage.py migrate contenttypes --no-input || echo "⚠️ contenttypes migration failed"
-    python manage.py migrate auth --no-input || echo "⚠️ auth migration failed"
-    python manage.py migrate sessions --no-input || echo "⚠️ sessions migration failed"
-    python manage.py migrate admin --no-input || echo "⚠️ admin migration failed"
-    
-    # Then try each custom app individually
-    echo "🔄 Migrating custom apps..."
-    for app in "${APPS[@]}"; do
-        echo "📋 Migrating $app..."
-        if python manage.py migrate $app --no-input --verbosity=1; then
-            echo "   ✅ $app migrated successfully"
-        else
-            echo "   ❌ Failed to migrate $app - checking for missing migrations..."
-            python manage.py showmigrations $app
-        fi
-    done
-    
-    # Final attempt at remaining migrations
-    echo "🔄 Final migration attempt..."
-    python manage.py migrate --no-input || echo "⚠️ Some migrations may still be pending"
-fi
+# Apply migrations in correct order
+echo "🗄️ Applying migrations..."
 
-# Final migration status
+# First migrate Django core apps
+echo "🔄 Migrating Django core apps..."
+python manage.py migrate contenttypes --no-input --verbosity=2
+python manage.py migrate auth --no-input --verbosity=2
+python manage.py migrate sessions --no-input --verbosity=2
+python manage.py migrate admin --no-input --verbosity=2
+
+# Then migrate custom apps
+echo "🔄 Migrating custom apps..."
+for app in "${APPS[@]}"; do
+    echo "📋 Migrating $app..."
+    python manage.py migrate $app --no-input --verbosity=2
+done
+
+# Apply any remaining migrations
+echo "🔄 Applying remaining migrations..."
+python manage.py migrate --no-input --verbosity=2
+
+# Verify migrations were applied
 echo "🔍 Final migration status..."
 python manage.py showmigrations
 
@@ -179,6 +137,8 @@ python manage.py showmigrations
 echo "✅ Verifying database tables..."
 python manage.py shell -c "
 from django.db import connection
+from django.apps import apps
+
 try:
     with connection.cursor() as cursor:
         cursor.execute(\"SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name;\")
@@ -186,39 +146,34 @@ try:
         table_names = [t[0] for t in tables]
         print(f'📋 Total tables created: {len(table_names)}')
         
-        # Check for app-specific tables
-        expected_apps = ['academics', 'accounts', 'alumni', 'careers', 'events', 'gallery', 'placements', 'projects']
+        if len(table_names) > 0:
+            print('✅ Sample tables:', table_names[:10])
+        else:
+            print('❌ No tables found!')
+            
+        # Check for specific app tables
+        expected_apps = ['accounts', 'academics', 'careers', 'events', 'gallery', 'placements', 'projects', 'alumni']
         
         for app in expected_apps:
-            app_tables = [t for t in table_names if t.startswith(f'{app}_')]
-            if len(app_tables) > 0:
-                print(f'  ✅ {app}: {len(app_tables)} tables')
+            app_tables = [t for t in table_names if app in t.lower()]
+            if app_tables:
+                print(f'  ✅ {app}: {app_tables}')
             else:
-                print(f'  ⚠️ {app}: No tables found')
-        
-        # Check for Django core tables
-        django_tables = [t for t in table_names if any(t.startswith(prefix) for prefix in ['auth_', 'django_', 'contenttypes_'])]
-        print(f'  ✅ Django core: {len(django_tables)} tables')
-        
+                print(f'  ❌ {app}: No tables found')
+                
 except Exception as e:
     print(f'❌ Error checking tables: {e}')
+    import traceback
+    traceback.print_exc()
 "
-
-# Create management groups if script exists
-echo "👥 Creating management groups..."
-if [ -f "create_management_groups.py" ]; then
-    python create_management_groups.py
-else
-    echo "⚠️ Management groups script not found, skipping..."
-fi
 
 # Create superuser
 echo "👤 Creating initial superuser..."
 python manage.py shell -c "
 import os
 from django.contrib.auth import get_user_model
-User = get_user_model()
 
+User = get_user_model()
 username = 'admin'
 email = 'admin@eesa.com'
 password = 'admin123'
@@ -233,11 +188,13 @@ try:
         print(f'🔐 Password: {password}')
 except Exception as e:
     print(f'❌ Error creating superuser: {e}')
+    import traceback
+    traceback.print_exc()
 "
 
 # Collect static files
 echo "📁 Collecting static files..."
-python manage.py collectstatic --no-input
+python manage.py collectstatic --no-input --verbosity=1
 
 echo "✅ Build completed successfully!"
 echo ""
@@ -245,6 +202,5 @@ echo "🔑 SUPERUSER CREDENTIALS:"
 echo "   Username: admin"
 echo "   Email: admin@eesa.com"
 echo "   Password: admin123"
-echo "   Admin URL: https://your-app.onrender.com/eesa/"
 echo ""
 echo "⚠️  IMPORTANT: Change password after first login!"
