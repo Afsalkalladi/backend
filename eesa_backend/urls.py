@@ -24,12 +24,23 @@ from django.views.decorators.csrf import csrf_exempt
 
 @csrf_exempt
 def api_root(request):
-    """Simple API root endpoint for testing connectivity"""
+    """API root endpoint - minimal information for security"""
     return JsonResponse({
-        'message': 'EESA Backend API is running!',
+        'message': 'EESA Backend API',
+        'version': '1.0.0',
+        'status': 'operational'
+    })
+
+@csrf_exempt
+def api_endpoints(request):
+    """Development endpoint to list all available APIs - only works in DEBUG mode"""
+    if not settings.DEBUG:
+        return JsonResponse({'error': 'Not available in production'}, status=404)
+    
+    return JsonResponse({
+        'message': 'EESA Backend API Endpoints (Development)',
         'version': '1.0.0',
         'endpoints': {
-            'auth': '/api/auth/',
             'academics': '/api/academics/',
             'projects': '/api/projects/',
             'events': '/api/events/',
@@ -38,17 +49,18 @@ def api_root(request):
             'gallery': '/api/gallery/',
             'alumni': '/api/alumni/',
             'admin': '/eesa/',
-        }
+        },
+        'note': 'This endpoint is only available in development mode'
     })
 
 urlpatterns = [
     path('', api_root, name='api_root'),
     path('api/', api_root, name='api_root_alt'),
+    path('api/dev/endpoints/', api_endpoints, name='api_endpoints_dev'),  # Development only
     path('eesa/', admin.site.urls),  # Custom admin URL
     
     # API endpoints
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/accounts/', include('accounts.urls')),
     path('api/academics/', include('academics.urls')),
     path('api/projects/', include('projects.urls')),
     path('api/events/', include('events.urls')),
