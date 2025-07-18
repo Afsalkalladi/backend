@@ -7,7 +7,7 @@ from django.db.models import Count, Sum, Q
 from django.utils import timezone
 
 import csv
-from .models import Event, EventRegistration, EventSpeaker, EventSchedule, EventFeedback
+from .models import Event, EventRegistration, EventSpeaker, EventSchedule
 
 
 class EventScheduleInline(admin.TabularInline):
@@ -231,64 +231,7 @@ class EventRegistrationAdmin(admin.ModelAdmin):
     verify_payment.short_description = 'Verify payment'
 
 
-@admin.register(EventSpeaker)
-class EventSpeakerAdmin(admin.ModelAdmin):
-    list_display = ['name', 'title', 'organization', 'event', 'talk_title', 'order']
-    list_filter = ['event', 'organization']
-    search_fields = ['name', 'title', 'organization', 'talk_title']
-    ordering = ['event', 'order']
-    
-    fieldsets = (
-        ('Speaker Information', {
-            'fields': ('event', 'name', 'title', 'organization', 'bio', 'profile_image')
-        }),
-        ('Social Links', {
-            'fields': ('linkedin_url', 'twitter_url', 'website_url')
-        }),
-        ('Talk Details', {
-            'fields': ('talk_title', 'talk_abstract', 'talk_duration', 'order')
-        })
-    )
+# EventSpeaker and EventSchedule removed from admin - managed through Event inlines only
 
 
-@admin.register(EventSchedule)
-class EventScheduleAdmin(admin.ModelAdmin):
-    list_display = ['event', 'title', 'speaker', 'start_time', 'end_time', 'venue_details']
-    list_filter = ['event', 'speaker']
-    search_fields = ['title', 'description', 'venue_details']
-    ordering = ['event', 'start_time']
-
-
-@admin.register(EventFeedback)
-class EventFeedbackAdmin(admin.ModelAdmin):
-    list_display = [
-        'event', 'registration', 'overall_rating', 'content_rating',
-        'organization_rating', 'would_recommend', 'submitted_at'
-    ]
-    list_filter = [
-        'event', 'overall_rating', 'content_rating', 'organization_rating',
-        'would_recommend', 'submitted_at'
-    ]
-    search_fields = ['registration__name', 'registration__email', 'liked_most', 'improvements']
-    readonly_fields = ['submitted_at']
-    
-    fieldsets = (
-        ('Feedback Information', {
-            'fields': ('event', 'registration', 'submitted_at')
-        }),
-        ('Ratings', {
-            'fields': ('overall_rating', 'content_rating', 'organization_rating')
-        }),
-        ('Comments', {
-            'fields': ('liked_most', 'improvements', 'additional_comments')
-        }),
-        ('Recommendations', {
-            'fields': ('would_recommend', 'future_topics')
-        })
-    )
-    
-    def has_add_permission(self, request):
-        return False  # Feedback should only be created by participants
-    
-    def has_change_permission(self, request, obj=None):
-        return False  # Feedback should not be editable once submitted
+# EventFeedback removed from admin - feedback managed through event interface

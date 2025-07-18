@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Company, PlacementDrive, PlacementApplication, PlacementCoordinator, PlacementStatistics, PlacedStudent
+from .models import Company, PlacementDrive, PlacementCoordinator, PlacementStatistics, PlacedStudent
 
 
 @admin.register(Company)
@@ -85,33 +85,7 @@ class PlacementDriveAdmin(admin.ModelAdmin):
         return readonly
 
 
-@admin.register(PlacementApplication)
-class PlacementApplicationAdmin(admin.ModelAdmin):
-    list_display = ['student', 'drive', 'status', 'result_status', 'applied_at']
-    list_filter = ['status', 'result_status', 'interview_mode', 'applied_at', 'drive__company']
-    search_fields = ['student__first_name', 'student__last_name', 'student__email', 'drive__title', 'drive__company__name']
-    readonly_fields = ['applied_at', 'updated_at']
-    list_editable = ['status', 'result_status']
-    date_hierarchy = 'applied_at'
-    
-    fieldsets = (
-        ('Basic Information', {
-            'fields': ('drive', 'student', 'status')
-        }),
-        ('Application Details', {
-            'fields': ('cover_letter', 'resume', 'additional_documents')
-        }),
-        ('Interview Details', {
-            'fields': ('interview_date', 'interview_mode', 'interview_notes')
-        }),
-        ('Results', {
-            'fields': ('result_status', 'feedback')
-        }),
-        ('Metadata', {
-            'fields': ('applied_at', 'updated_at'),
-            'classes': ('collapse',)
-        })
-    )
+# PlacementApplication removed from admin - managed through PlacementDrive interface
 
 
 @admin.register(PlacementCoordinator)
