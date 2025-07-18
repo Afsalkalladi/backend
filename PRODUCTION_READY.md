@@ -4,7 +4,7 @@
 
 ### 🔧 What's Been Configured:
 
-1. **Database**: Connected to Supabase PostgreSQL
+1. **Database**: Connected to PostgreSQL
 2. **Static Files**: Whitenoise configured for static file serving
 3. **Security**: Production security settings enabled
 4. **Superuser**: Initial admin user created
@@ -24,11 +24,11 @@ DEBUG=False
 SECRET_KEY=your-production-secret-key-here-make-it-long-and-random
 ALLOWED_HOSTS=*.onrender.com
 
-# Database - Use your Supabase credentials
-DB_NAME=postgres
-DB_USER=postgres.xqpowzislnyvwvjyfhwy
-DB_PASSWORD=nogcuQ-bewxu3-haksek
-DB_HOST=aws-0-us-east-2.pooler.supabase.com
+# Database - Use your PostgreSQL credentials
+DB_NAME=your_database_name
+DB_USER=your_database_user
+DB_PASSWORD=your_database_password
+DB_HOST=your_database_host
 DB_PORT=6543
 
 # Cloudinary (Optional - for media files)
@@ -52,7 +52,7 @@ RENDER_EXTERNAL_HOSTNAME=your-app-name.onrender.com
 
 ### 📊 Database Status:
 
-- **Tables**: All migration tables created in Supabase
+- **Tables**: All migration tables created in database
 - **Superuser**: Created and ready
 - **Management Groups**: 4 groups with proper permissions
 - **Local SQLite**: Removed (production uses PostgreSQL only)

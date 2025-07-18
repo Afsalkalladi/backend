@@ -4,14 +4,13 @@ from django.http import HttpResponse
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.utils.html import format_html
-from .models import User, AuditLog, TeamMember
-from .admin_base import AuditableAdmin
+from .models import User, TeamMember
 import csv
 import io
 from django.contrib.auth.models import Group
 
 
-class UserAdmin(BaseUserAdmin, AuditableAdmin):
+class UserAdmin(BaseUserAdmin):
     """User administration with group-based permissions"""
     
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'group_list', 'date_joined')
@@ -71,7 +70,7 @@ class UserAdmin(BaseUserAdmin, AuditableAdmin):
 
 
 @admin.register(TeamMember)
-class TeamMemberAdmin(AuditableAdmin):
+class TeamMemberAdmin(admin.ModelAdmin):
     """Team member management with separate EESA and Tech teams"""
     
     list_display = ('name', 'position', 'get_team_display', 'is_active', 'order', 'created_at')
@@ -199,26 +198,6 @@ class TeamMemberAdmin(AuditableAdmin):
         </div>
         '''
         return super().changelist_view(request, extra_context=extra_context)
-
-
-@admin.register(AuditLog)
-class AuditLogAdmin(admin.ModelAdmin):
-    """Read-only audit log view"""
-    
-    list_display = ('user', 'action', 'content_type', 'object_id', 'timestamp')
-    list_filter = ('action', 'content_type', 'timestamp')
-    search_fields = ('user__username', 'object_id', 'changes')
-    readonly_fields = ('user', 'action', 'content_type', 'object_id', 'changes', 'timestamp')
-    ordering = ('-timestamp',)
-    
-    def has_add_permission(self, request):
-        return False
-    
-    def has_change_permission(self, request, obj=None):
-        return False
-    
-    def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser
 
 
 class GroupAdmin(admin.ModelAdmin):

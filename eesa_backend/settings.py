@@ -99,7 +99,7 @@ WSGI_APPLICATION = 'eesa_backend.wsgi.application'
 
 
 # Database configuration
-# Use dj_database_url for Render DATABASE_URL or build from Supabase credentials
+# Use dj_database_url for Render DATABASE_URL or build from environment credentials
 DATABASE_URL = config('DATABASE_URL', default=None)
 if DATABASE_URL:
     DATABASES = {
@@ -112,7 +112,7 @@ else:
     db_host = config('DB_HOST', default=None)
     db_port = config('DB_PORT', default='5432')
     if db_name and db_user and db_pass and db_host and not db_name.startswith('your_'):
-        # Build Postgres URL for Supabase
+        # Build Postgres URL from environment variables
         url = f"postgres://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
         DATABASES = {
             'default': dj_database_url.config(default=url, conn_max_age=600, ssl_require=True)

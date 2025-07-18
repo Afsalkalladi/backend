@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import GalleryCategory, GalleryImage, GalleryAlbum, AlbumImage
-from accounts.admin_base import PermissionRestrictedAdmin
+
 
 
 @admin.register(GalleryCategory)
@@ -18,7 +18,7 @@ class GalleryCategoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(GalleryImage)
-class GalleryImageAdmin(PermissionRestrictedAdmin):
+class GalleryImageAdmin(admin.ModelAdmin):
     list_display = ['title', 'image_preview', 'category', 'event_name', 'is_featured', 'is_public', 'uploaded_by', 'created_at']
     list_filter = ['category', 'is_featured', 'is_public', 'event_date', 'uploaded_by', 'created_at']
     search_fields = ['title', 'description', 'event_name', 'tags', 'photographer']
@@ -83,7 +83,7 @@ class AlbumImageInline(admin.TabularInline):
 
 
 @admin.register(GalleryAlbum)
-class GalleryAlbumAdmin(PermissionRestrictedAdmin):
+class GalleryAlbumAdmin(admin.ModelAdmin):
     list_display = ['name', 'image_count', 'event_date', 'is_featured', 'is_public', 'created_by', 'created_at']
     list_filter = ['is_featured', 'is_public', 'event_date', 'created_by', 'created_at']
     search_fields = ['name', 'description', 'location']

@@ -8,11 +8,10 @@ from django.contrib import messages
 import csv
 import io
 from .models import Alumni
-from accounts.admin_base import AuditableAdmin, PermissionRestrictedAdmin
 
 
 @admin.register(Alumni)
-class AlumniAdmin(PermissionRestrictedAdmin, AuditableAdmin):
+class AlumniAdmin(admin.ModelAdmin):
     list_display = [
         'full_name', 'email', 'year_of_passout', 'employment_status', 
         'current_company', 'is_verified', 'is_active', 'created_at'

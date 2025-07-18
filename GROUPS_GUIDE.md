@@ -1,25 +1,19 @@
 # EESA College Portal - Production Management Groups Guide
 
-## 🚀 Now with Complete Cloud Deployment!
+## 🚀 Production Architecture
 
-- **Backend Hosting**: Render (free tier, auto-scaling)
-- **Database**: PostgreSQL on Render or Supabase
+- **Backend Hosting**: Render or similar platform
+- **Database**: PostgreSQL (cloud or self-hosted)  
 - **Media Storage**: Cloudinary (global CDN, image optimization)
 - **Authentication**: Django Groups (secure, role-based)
 
-## 🌐 Production Architecture
+## 🌐 System Architecture
 
 ```
-Frontend → Render (Django) → PostgreSQL → Cloudinary
-   ↓           ↓                ↓           ↓
- Your App   Backend API      Database    Media CDN
-```College Portal - Production Management Groups Guide
-
-## � Now with Cloud Services Support!
-
-- **Database**: PostgreSQL on Supabase (scalable, managed)
-- **Media Storage**: Cloudinary (global CDN, image optimization)
-- **Authentication**: Django Groups (secure, role-based)
+Frontend → Backend API → PostgreSQL → Cloudinary
+   ↓           ↓             ↓           ↓
+ Your App   Django REST   Database    Media CDN
+```
 
 ## �📋 Management Groups Structure
 
@@ -49,7 +43,7 @@ Frontend → Render (Django) → PostgreSQL → Cloudinary
 
 1. **Read the Cloud Setup Guide**: `CLOUD_SETUP_GUIDE.md`
 2. **Follow Render Deployment**: `RENDER_DEPLOYMENT_CHECKLIST.md`
-3. **Set up PostgreSQL** (Render or Supabase)
+3. **Set up PostgreSQL** (cloud or self-hosted)
 4. **Configure Cloudinary** for media storage
 5. **Deploy to Render** with one-click deployment
 
@@ -61,9 +55,9 @@ Frontend → Render (Django) → PostgreSQL → Cloudinary
 - ✅ **Auto-scaling** and SSL
 - ✅ **Easy environment management**
 
-**Option 2: Render + Supabase**
-- ✅ **Render** for hosting
-- ✅ **Supabase** for advanced database features
+**Option 2: Cloud Deployment**
+- ✅ **Cloud hosting** for reliability  
+- ✅ **PostgreSQL** for database
 - ✅ **Best performance** combination
 
 **Option 3: Manual VPS**
@@ -100,13 +94,13 @@ Frontend → Render (Django) → PostgreSQL → Cloudinary
 
 ### Environment Files
 
-- **`.env`**: Production environment (with Supabase/Cloudinary)
+- **`.env`**: Production environment (with PostgreSQL/Cloudinary)
 - **`.env.development`**: Development environment (SQLite fallback)
 - **`.env.example`**: Template for environment variables
 
 ## 🌟 Cloud Features
 
-### Database (Supabase PostgreSQL)
+### Database (PostgreSQL)
 - ✅ **Scalable PostgreSQL** with automatic backups
 - ✅ **Real-time capabilities** for future features
 - ✅ **Built-in security** with row-level security
@@ -124,7 +118,6 @@ Frontend → Render (Django) → PostgreSQL → Cloudinary
 - 🔒 **DEBUG disabled** for production security
 - 🛡️ **Authentication required** for all API endpoints
 - 🔐 **Group-based permissions** ensure proper access control
-- 📝 **Audit trail** tracks all administrative changes
 - 🌐 **CORS configured** for secure cross-origin requests
 
 ## 🎯 How to Use
@@ -134,18 +127,16 @@ Frontend → Render (Django) → PostgreSQL → Cloudinary
 3. **Users inherit permissions** automatically from their groups
 4. **Upload media files** - automatically stored in Cloudinary
 5. **CSV Import/Export** available for bulk operations
-6. **Audit logging** maintains change history
 
 ## 📊 Production Features
 
-- ✅ **Cloud-ready architecture** (Supabase + Cloudinary)
+- ✅ **Cloud-ready architecture** (PostgreSQL + Cloudinary)
 - ✅ **Secure authentication** (no public access)
 - ✅ **Group-based permissions** (no complex role system)
 - ✅ **Media optimization** (automatic image processing)
 - ✅ **Global CDN** (fast content delivery)
 - ✅ **CSV bulk operations** for efficient data management
-- ✅ **Audit trail** for all administrative actions
-- ✅ **Scalable database** (PostgreSQL on Supabase)
+- ✅ **Scalable database** (PostgreSQL)
 - ✅ **Production-ready configuration**
 
 ## 🔧 Management Commands
@@ -159,7 +150,7 @@ Frontend → Render (Django) → PostgreSQL → Cloudinary
 ## 🚀 Deployment Ready
 
 Your system is now configured for:
-- **Supabase PostgreSQL** for scalable database
+- **PostgreSQL** for scalable database
 - **Cloudinary** for global media storage
 - **Production-grade security** and performance
 - **Easy environment management**

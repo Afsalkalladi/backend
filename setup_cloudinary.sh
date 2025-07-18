@@ -61,6 +61,5 @@ echo "- Free tier: 25GB storage + 25GB bandwidth/month"
 echo "- Supports all file types (images, PDFs, documents)"
 echo ""
 
-echo "🆘 Need help? Check the setup verification:"
-echo "python3 test_cloudinary.py"
+echo "🆘 Need help? Check your Cloudinary configuration in Django admin."
 echo ""

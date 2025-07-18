@@ -63,7 +63,6 @@ def create_management_groups():
             'accounts.add_teammember',
             'accounts.change_teammember',
             'accounts.delete_teammember',
-            'accounts.view_auditlog',
         ],
         
         'Academic Management': [
@@ -99,7 +98,6 @@ def create_management_groups():
             'projects.add_projectvideo',
             'projects.change_projectvideo',
             'projects.delete_projectvideo',
-            'accounts.view_auditlog',
         ],
         
         'Events Management': [
@@ -135,7 +133,6 @@ def create_management_groups():
             'gallery.add_gallerycategory',
             'gallery.change_gallerycategory',
             'gallery.delete_gallerycategory',
-            'accounts.view_auditlog',
         ],
         
         'Placements & Careers Management': [
@@ -175,7 +172,6 @@ def create_management_groups():
             'careers.add_internshipapplication',
             'careers.change_internshipapplication',
             'careers.delete_internshipapplication',
-            'accounts.view_auditlog',
         ]
     }
     

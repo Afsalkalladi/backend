@@ -5,7 +5,7 @@ from django.utils.safestring import mark_safe
 from django.http import HttpResponse
 from django.db.models import Count, Sum, Q
 from django.utils import timezone
-from accounts.admin_base import PermissionRestrictedAdmin
+
 import csv
 from .models import Event, EventRegistration, EventSpeaker, EventSchedule, EventFeedback
 
@@ -30,7 +30,7 @@ class EventSpeakerInline(admin.TabularInline):
 
 
 @admin.register(Event)
-class EventAdmin(PermissionRestrictedAdmin):
+class EventAdmin(admin.ModelAdmin):
     list_display = [
         'title', 'event_type', 'start_date_formatted', 'status', 'registration_count',
         'is_upcoming_indicator', 'is_featured_indicator', 'created_by'
@@ -171,7 +171,7 @@ class EventAdmin(PermissionRestrictedAdmin):
 
 
 @admin.register(EventRegistration)
-class EventRegistrationAdmin(PermissionRestrictedAdmin):
+class EventRegistrationAdmin(admin.ModelAdmin):
     list_display = [
         'name', 'email', 'event', 'payment_status', 'payment_amount',
         'attended', 'certificate_issued', 'registered_at'

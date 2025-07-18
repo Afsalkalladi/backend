@@ -1,8 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import RegexValidator
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericForeignKey
 
 
 def team_member_upload_path(instance, filename):
@@ -80,53 +78,6 @@ class EventRegistration(models.Model):
     
     def __str__(self):
         return f"{self.name} - {self.event_title} ({self.payment_status})"
-
-
-class AuditLog(models.Model):
-    """Audit log to track who does what actions"""
-    
-    ACTION_CHOICES = [
-        ('create', 'Created'),
-        ('update', 'Updated'),
-        ('delete', 'Deleted'),
-        ('approve', 'Approved'),
-        ('reject', 'Rejected'),
-        ('upload', 'Uploaded'),
-        ('download', 'Downloaded'),
-        ('verify', 'Verified'),
-        ('feature', 'Featured'),
-        ('unfeature', 'Unfeatured'),
-        ('publish', 'Published'),
-        ('unpublish', 'Unpublished'),
-        ('activate', 'Activated'),
-        ('deactivate', 'Deactivated'),
-    ]
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='audit_logs')
-    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
-    timestamp = models.DateTimeField(auto_now_add=True)
-    
-    # Generic foreign key to track actions on any model
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-    
-    # Additional context
-    object_repr = models.CharField(max_length=200, help_text="String representation of the object")
-    changes = models.JSONField(blank=True, null=True, help_text="What fields were changed")
-    ip_address = models.GenericIPAddressField(blank=True, null=True)
-    user_agent = models.TextField(blank=True, null=True)
-    
-    class Meta:
-        ordering = ['-timestamp']
-        indexes = [
-            models.Index(fields=['user', 'timestamp']),
-            models.Index(fields=['content_type', 'object_id']),
-            models.Index(fields=['action', 'timestamp']),
-        ]
-    
-    def __str__(self):
-        return f"{self.user.username} {self.get_action_display()} {self.object_repr} at {self.timestamp}"
 
 
 class TeamMember(models.Model):

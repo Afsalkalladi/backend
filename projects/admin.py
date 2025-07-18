@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import Project, TeamMember, ProjectImage, ProjectVideo
-from accounts.admin_base import PermissionRestrictedAdmin
+
 
 
 class TeamMemberInline(admin.TabularInline):
@@ -33,7 +33,7 @@ class ProjectVideoInline(admin.TabularInline):
 
 
 @admin.register(Project)
-class ProjectAdmin(PermissionRestrictedAdmin):
+class ProjectAdmin(admin.ModelAdmin):
     """Enhanced Project admin with better organization"""
     
     list_display = ['title', 'category_display', 'student_department', 'student_batch', 'featured_status', 'published_status', 'created_by', 'created_at']
