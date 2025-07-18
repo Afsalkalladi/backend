@@ -135,12 +135,62 @@ def force_migrate(request):
             'message': 'Migration failed'
         }, status=500)
 
+@csrf_exempt
+def check_admin(request):
+    """Check admin configuration and users"""
+    try:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        # Check users
+        total_users = User.objects.count()
+        superusers = User.objects.filter(is_superuser=True)
+        
+        user_info = []
+        for user in superusers[:5]:  # First 5 superusers
+            user_info.append({
+                'username': user.username,
+                'email': user.email,
+                'is_active': user.is_active,
+                'is_superuser': user.is_superuser,
+                'date_joined': user.date_joined.isoformat() if hasattr(user, 'date_joined') else 'N/A'
+            })
+        
+        # Check admin registry
+        from django.contrib import admin
+        registered_models = []
+        for model, admin_class in admin.site._registry.items():
+            registered_models.append({
+                'app': model._meta.app_label,
+                'model': model._meta.model_name,
+                'admin_class': admin_class.__class__.__name__
+            })
+        
+        return JsonResponse({
+            'total_users': total_users,
+            'superusers_count': superusers.count(),
+            'superusers': user_info,
+            'registered_models_count': len(registered_models),
+            'registered_models': registered_models[:10],  # First 10
+            'custom_user_model': str(User),
+            'status': 'success'
+        })
+        
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'status': 'error',
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }, status=500)
+
 urlpatterns = [
     path('', api_root, name='api_root'),
     path('api/', api_root, name='api_root_alt'),
     path('api/dev/endpoints/', api_endpoints, name='api_endpoints_dev'),  # Development only
     path('debug/', debug_info, name='debug_info'),  # Debug endpoint for deployment issues
     path('force-migrate/', force_migrate, name='force_migrate'),  # Force migration endpoint
+    path('check-admin/', check_admin, name='check_admin'),  # Check admin status
     path('eesa/', admin.site.urls),  # Custom admin URL
     
     # API endpoints
