@@ -202,8 +202,8 @@ if cloud_name != 'dummy' and cloud_name != 'demo' and len(cloud_name) > 3:
                 "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
             },
             "staticfiles": {
-                # Use Whitenoise for static files (more reliable for admin)
-                "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+                # Use simpler Whitenoise storage for better reliability
+                "BACKEND": "whitenoise.storage.StaticFilesStorage",
             },
         }
         
@@ -222,7 +222,7 @@ if cloud_name != 'dummy' and cloud_name != 'demo' and len(cloud_name) > 3:
                 "BACKEND": "django.core.files.storage.FileSystemStorage",
             },
             "staticfiles": {
-                "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+                "BACKEND": "whitenoise.storage.StaticFilesStorage",
             },
         }
         STATIC_URL = '/static/'
@@ -233,7 +233,7 @@ else:
             "BACKEND": "django.core.files.storage.FileSystemStorage",
         },
         "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            "BACKEND": "whitenoise.storage.StaticFilesStorage",
         },
     }
     STATIC_URL = '/static/'

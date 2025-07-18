@@ -21,6 +21,8 @@ from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+import os
+import sys
 
 @csrf_exempt
 def api_root(request):
@@ -53,10 +55,38 @@ def api_endpoints(request):
         'note': 'This endpoint is only available in development mode'
     })
 
+@csrf_exempt
+def debug_info(request):
+    """Debug endpoint to check deployment configuration"""
+    try:
+        from django.db import connection
+        cursor = connection.cursor()
+        cursor.execute("SELECT 1")
+        db_status = "Connected"
+    except Exception as e:
+        db_status = f"Error: {str(e)}"
+    
+    return JsonResponse({
+        'debug': settings.DEBUG,
+        'allowed_hosts': settings.ALLOWED_HOSTS,
+        'static_url': settings.STATIC_URL,
+        'static_root': str(settings.STATIC_ROOT) if hasattr(settings, 'STATIC_ROOT') else 'Not set',
+        'database_status': db_status,
+        'python_version': sys.version,
+        'django_version': '5.1.4',
+        'environment_vars': {
+            'DEBUG': os.environ.get('DEBUG', 'Not set'),
+            'DATABASE_URL': 'Set' if os.environ.get('DATABASE_URL') else 'Not set',
+            'DB_NAME': 'Set' if os.environ.get('DB_NAME') else 'Not set',
+            'CLOUDINARY_CLOUD_NAME': 'Set' if os.environ.get('CLOUDINARY_CLOUD_NAME') else 'Not set',
+        }
+    })
+
 urlpatterns = [
     path('', api_root, name='api_root'),
     path('api/', api_root, name='api_root_alt'),
     path('api/dev/endpoints/', api_endpoints, name='api_endpoints_dev'),  # Development only
+    path('debug/', debug_info, name='debug_info'),  # Debug endpoint for deployment issues
     path('eesa/', admin.site.urls),  # Custom admin URL
     
     # API endpoints
