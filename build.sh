@@ -4,13 +4,46 @@ set -o errexit
 
 echo "🚀 Starting Render build process..."
 
+# Debug environment variables
+echo "🔍 Environment Variables Check..."
+echo "DEBUG: ${DEBUG:-Not Set}"
+echo "DATABASE_URL: ${DATABASE_URL:+Set}"
+echo "DB_NAME: ${DB_NAME:-Not Set}"
+echo "DB_HOST: ${DB_HOST:-Not Set}"
+echo "DB_PORT: ${DB_PORT:-Not Set}"
+echo "DB_USER: ${DB_USER:+Set}"
+echo "CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-Not Set}"
+
 # Install dependencies
 echo "📦 Installing Python dependencies..."
 pip install -r requirements.txt
 
-# Check database connection
+# Check database connection with retry logic
 echo "🔍 Checking database connection..."
 python manage.py check --database default
+
+# Wait for database to be ready (Render specific)
+echo "⏳ Waiting for database to be ready..."
+python manage.py shell -c "
+import time
+from django.db import connection
+from django.core.exceptions import OperationalError
+
+max_attempts = 10
+for attempt in range(max_attempts):
+    try:
+        cursor = connection.cursor()
+        cursor.execute('SELECT 1')
+        print(f'✅ Database ready on attempt {attempt + 1}')
+        break
+    except OperationalError as e:
+        if attempt < max_attempts - 1:
+            print(f'⏳ Database not ready (attempt {attempt + 1}/{max_attempts}), waiting 5 seconds...')
+            time.sleep(5)
+        else:
+            print(f'❌ Database connection failed after {max_attempts} attempts: {e}')
+            raise
+"
 
 # Show current database settings (for debugging)
 echo "🔍 Database configuration check..."
@@ -55,7 +88,21 @@ echo "🔍 Migration status..."
 python manage.py showmigrations
 
 echo "🗄️ Running database migrations..."
-python manage.py migrate --no-input
+python manage.py migrate --no-input --verbosity=2
+
+# Verify migrations were applied
+echo "✅ Verifying migrations..."
+python manage.py shell -c "
+from django.db import connection
+cursor = connection.cursor()
+cursor.execute(\"SELECT COUNT(*) FROM django_migrations\")
+count = cursor.fetchone()[0]
+print(f'📊 Applied migrations: {count}')
+if count == 0:
+    print('⚠️ Warning: No migrations found in database')
+else:
+    print('✅ Migrations successfully applied')
+"
 
 # Check if the management groups script exists and run it
 echo "👥 Creating management groups..."
