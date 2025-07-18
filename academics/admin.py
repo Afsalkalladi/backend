@@ -1,7 +1,39 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
+from django.contrib.admin import SimpleListFilter
 from .models import Scheme, Subject, AcademicCategory, AcademicResource, Note
+
+
+class SubjectSchemeFilter(SimpleListFilter):
+    """Custom filter for subjects by scheme"""
+    title = 'scheme'
+    parameter_name = 'subject_scheme'
+
+    def lookups(self, request, model_admin):
+        schemes = Scheme.objects.filter(is_active=True)
+        return [(scheme.id, f"{scheme.name} ({scheme.year})") for scheme in schemes]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(subject__scheme__id=self.value())
+        return queryset
+
+
+class SubjectSemesterFilter(SimpleListFilter):
+    """Custom filter for subjects by semester"""
+    title = 'semester'
+    parameter_name = 'subject_semester'
+
+    def lookups(self, request, model_admin):
+        # Get all semesters that have subjects
+        semesters = Subject.objects.values_list('semester', flat=True).distinct().order_by('semester')
+        return [(sem, f"Semester {sem}") for sem in semesters]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(subject__semester=self.value())
+        return queryset
 
 
 
@@ -51,7 +83,7 @@ class AcademicResourceAdmin(admin.ModelAdmin):
         'file_size_display', 'download_count', 'is_featured', 'created_at'
     ]
     list_filter = [
-        'category__category_type', 'category', 'subject__scheme', 'subject__semester',
+        'category__category_type', 'category', SubjectSchemeFilter, SubjectSemesterFilter,
         'is_approved', 'is_featured', 'module_number', 'exam_type', 'created_at'
     ]
     search_fields = ['title', 'description', 'subject__name', 'subject__code', 'uploaded_by__username']
@@ -61,6 +93,52 @@ class AcademicResourceAdmin(admin.ModelAdmin):
     ]
     list_editable = ['is_featured']
     date_hierarchy = 'created_at'
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('title', 'description', 'category')
+        }),
+        ('Subject Selection', {
+            'fields': ('subject',)
+        }),
+        ('File Upload', {
+            'fields': ('file',)
+        }),
+        ('Resource Details', {
+            'fields': ('module_number', 'exam_type', 'exam_year'),
+            'classes': ('collapse',)
+        }),
+        ('Approval & Status', {
+            'fields': ('is_approved', 'is_featured'),
+            'classes': ('collapse',)
+        }),
+        ('File Information', {
+            'fields': ('file_info', 'file_size', 'download_count', 'view_count'),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('uploaded_by', 'created_at', 'updated_at', 'approved_at'),
+            'classes': ('collapse',)
+        })
+    )
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """Customize the form to improve subject selection"""
+        form = super().get_form(request, obj, **kwargs)
+        
+        # Add help text for subject selection
+        if 'subject' in form.base_fields:
+            form.base_fields['subject'].help_text = (
+                'Tip: Use the list filters on the right to filter by Scheme and Semester '
+                'before selecting a subject to make finding the right subject easier.'
+            )
+            
+            # Group subjects by scheme and semester for better display
+            form.base_fields['subject'].queryset = Subject.objects.select_related('scheme').order_by(
+                'scheme__year', 'semester', 'name'
+            )
+        
+        return form
     
     def approval_status(self, obj):
         if obj.is_approved:
