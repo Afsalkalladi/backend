@@ -5,6 +5,21 @@ import os
 
 User = get_user_model()
 
+def gallery_image_upload_path(instance, filename):
+    """Generate upload path for gallery images"""
+    name, ext = os.path.splitext(filename)
+    safe_category = "".join(c for c in instance.category.name if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+    if instance.event_name:
+        safe_event = "".join(c for c in instance.event_name if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+        return f'gallery/{safe_category.replace(" ", "_")}/{safe_event.replace(" ", "_")}/{filename}'
+    return f'gallery/{safe_category.replace(" ", "_")}/{filename}'
+
+def gallery_thumbnail_upload_path(instance, filename):
+    """Generate upload path for gallery thumbnails"""
+    name, ext = os.path.splitext(filename)
+    safe_category = "".join(c for c in instance.category.name if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+    return f'gallery/thumbnails/{safe_category.replace(" ", "_")}/{filename}'
+
 class GalleryCategory(models.Model):
     """Category for organizing gallery images"""
     name = models.CharField(max_length=100, unique=True)
@@ -29,10 +44,10 @@ class GalleryImage(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     image = models.ImageField(
-        upload_to='gallery/',
+        upload_to=gallery_image_upload_path,
         validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'webp'])]
     )
-    thumbnail = models.ImageField(upload_to='gallery/thumbnails/', blank=True, null=True)
+    thumbnail = models.ImageField(upload_to=gallery_thumbnail_upload_path, blank=True, null=True)
     
     # Organization
     category = models.ForeignKey(GalleryCategory, on_delete=models.CASCADE, related_name='images')

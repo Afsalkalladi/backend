@@ -81,10 +81,14 @@ class Alumni(models.Model):
     @property
     def years_since_graduation(self):
         """Calculate years since graduation"""
+        if self.year_of_passout is None:
+            return None
         current_year = timezone.now().year
         return current_year - self.year_of_passout
     
     @property
     def batch_name(self):
         """Return batch identifier"""
+        if self.year_of_passout is None:
+            return "Batch TBD"
         return f"Batch {self.year_of_passout}"

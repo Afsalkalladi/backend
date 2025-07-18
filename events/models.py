@@ -6,6 +6,39 @@ from django.utils import timezone
 User = get_user_model()
 
 
+def event_banner_upload_path(instance, filename):
+    """Generate upload path for event banners"""
+    import os
+    name, ext = os.path.splitext(filename)
+    safe_title = "".join(c for c in instance.title if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+    return f'events/banners/{safe_title.replace(" ", "_")}{ext}'
+
+
+def event_flyer_upload_path(instance, filename):
+    """Generate upload path for event flyers"""
+    import os
+    name, ext = os.path.splitext(filename)
+    safe_title = "".join(c for c in instance.title if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+    return f'events/flyers/{safe_title.replace(" ", "_")}{ext}'
+
+
+def payment_qr_upload_path(instance, filename):
+    """Generate upload path for payment QR codes"""
+    import os
+    name, ext = os.path.splitext(filename)
+    safe_title = "".join(c for c in instance.title if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+    return f'events/payments/{safe_title.replace(" ", "_")}{ext}'
+
+
+def speaker_profile_upload_path(instance, filename):
+    """Generate upload path for speaker profile images"""
+    import os
+    name, ext = os.path.splitext(filename)
+    safe_name = "".join(c for c in instance.name if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+    event_title = "".join(c for c in instance.event.title if c.isalnum() or c in (' ', '-', '_')).rstrip()[:15]
+    return f'events/speakers/{event_title.replace(" ", "_")}/{safe_name.replace(" ", "_")}{ext}'
+
+
 class Event(models.Model):
     """Comprehensive Event management - created and managed by staff"""
     
@@ -55,7 +88,7 @@ class Event(models.Model):
     # Payment Settings
     registration_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     payment_required = models.BooleanField(default=False)
-    payment_qr_code = models.ImageField(upload_to='event_payments/', blank=True, null=True)
+    payment_qr_code = models.ImageField(upload_to=payment_qr_upload_path, blank=True, null=True)
     payment_upi_id = models.CharField(max_length=100, blank=True, null=True)
     payment_instructions = models.TextField(blank=True, null=True)
     
@@ -65,8 +98,8 @@ class Event(models.Model):
     contact_phone = models.CharField(max_length=15, blank=True, null=True)
     
     # Media
-    banner_image = models.ImageField(upload_to='event_banners/', blank=True, null=True)
-    event_flyer = models.FileField(upload_to='event_flyers/', blank=True, null=True)
+    banner_image = models.ImageField(upload_to=event_banner_upload_path, blank=True, null=True)
+    event_flyer = models.FileField(upload_to=event_flyer_upload_path, blank=True, null=True)
     
     # Management
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_events')
@@ -197,7 +230,7 @@ class EventSpeaker(models.Model):
     title = models.CharField(max_length=200, help_text="e.g., CEO, Professor, etc.")
     organization = models.CharField(max_length=200)
     bio = models.TextField(blank=True, null=True)
-    profile_image = models.ImageField(upload_to='speaker_profiles/', blank=True, null=True)
+    profile_image = models.ImageField(upload_to=speaker_profile_upload_path, blank=True, null=True)
     
     # Social Links
     linkedin_url = models.URLField(blank=True, null=True)

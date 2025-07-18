@@ -26,7 +26,7 @@ class AlumniAdmin(PermissionRestrictedAdmin, AuditableAdmin):
         'job_title'
     ]
     readonly_fields = [
-        'id', 'years_since_graduation', 'batch_name',
+        'id', 'department', 'years_since_graduation', 'batch_name',
         'created_at', 'updated_at'
     ]
     fieldsets = (

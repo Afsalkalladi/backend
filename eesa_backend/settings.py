@@ -163,14 +163,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = '/static/'
+# STATIC_URL will be set based on Cloudinary configuration below
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-# Whitenoise configuration for static files (default for local)
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Whitenoise configuration for static files (fallback)
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = True
 
@@ -187,22 +186,64 @@ CLOUDINARY_STORAGE = {
 }
 
 # Configure cloudinary only if we have real credentials
-if CLOUDINARY_STORAGE['CLOUD_NAME'] != 'dummy':
-    cloudinary.config(
-        cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
-        api_key=CLOUDINARY_STORAGE['API_KEY'],
-        api_secret=CLOUDINARY_STORAGE['API_SECRET'],
-        secure=True
-    )
+cloud_name = CLOUDINARY_STORAGE['CLOUD_NAME']
+if cloud_name != 'dummy' and cloud_name != 'demo' and len(cloud_name) > 3:
+    try:
+        cloudinary.config(
+            cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
+            api_key=CLOUDINARY_STORAGE['API_KEY'],
+            api_secret=CLOUDINARY_STORAGE['API_SECRET'],
+            secure=True
+        )
+        
+        # Modern Django 4.2+ STORAGES setting for Cloudinary
+        STORAGES = {
+            "default": {
+                "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+            },
+            "staticfiles": {
+                # Use Whitenoise for static files (more reliable for admin)
+                "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            },
+        }
+        
+        # Always use local static files for admin reliability
+        STATIC_URL = '/static/'
+        
+        print("✅ Using Cloudinary for media files, Whitenoise for static files")
+        
+    except Exception as e:
+        print(f"⚠️  Cloudinary configuration failed: {e}")
+        print("🔄 Falling back to local storage")
+        
+        # Fallback to local storage
+        STORAGES = {
+            "default": {
+                "BACKEND": "django.core.files.storage.FileSystemStorage",
+            },
+            "staticfiles": {
+                "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            },
+        }
+        STATIC_URL = '/static/'
+else:
+    # Fallback to local storage with proper Django 4.2+ configuration
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+    STATIC_URL = '/static/'
     
-    # Use Cloudinary for media files when configured
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-    
-    # Use Cloudinary for static files in production when not DEBUG
-    if not DEBUG:
-        STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
+    if cloud_name in ['dummy', 'demo']:
+        print("⚠️  Using demo Cloudinary credentials - files will be stored locally")
+        print("📝 Update your .env file with real Cloudinary credentials for cloud storage")
 
 MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 
 # Render-specific settings

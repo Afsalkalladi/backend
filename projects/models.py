@@ -4,6 +4,33 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
+def project_report_upload_path(instance, filename):
+    """Generate upload path for project reports"""
+    import os
+    name, ext = os.path.splitext(filename)
+    safe_title = "".join(c for c in instance.title if c.isalnum() or c in (' ', '-', '_')).rstrip()[:25]
+    category = instance.category.replace('_', '-')
+    return f'projects/{category}/reports/{safe_title.replace(" ", "_")}{ext}'
+
+
+def project_image_upload_path(instance, filename):
+    """Generate upload path for project images"""
+    import os
+    name, ext = os.path.splitext(filename)
+    safe_title = "".join(c for c in instance.title if c.isalnum() or c in (' ', '-', '_')).rstrip()[:25]
+    category = instance.category.replace('_', '-')
+    return f'projects/{category}/images/{safe_title.replace(" ", "_")}{ext}'
+
+
+def project_gallery_upload_path(instance, filename):
+    """Generate upload path for project gallery images"""
+    import os
+    name, ext = os.path.splitext(filename)
+    safe_title = "".join(c for c in instance.project.title if c.isalnum() or c in (' ', '-', '_')).rstrip()[:25]
+    category = instance.project.category.replace('_', '-')
+    return f'projects/{category}/gallery/{safe_title.replace(" ", "_")}/{filename}'
+
+
 class Project(models.Model):
     """Projects showcase - managed by staff only"""
     
@@ -32,8 +59,8 @@ class Project(models.Model):
     student_department = models.CharField(max_length=100, default="Electronics Engineering")
     
     # Files
-    project_report = models.FileField(upload_to='project_reports/', blank=True, null=True, help_text="Upload project report (PDF)")
-    project_images = models.ImageField(upload_to='project_images/', blank=True, null=True, help_text="Project screenshots or images")
+    project_report = models.FileField(upload_to=project_report_upload_path, blank=True, null=True, help_text="Upload project report (PDF)")
+    project_images = models.ImageField(upload_to=project_image_upload_path, blank=True, null=True, help_text="Project screenshots or images")
     
     # Links
     github_url = models.URLField(blank=True, null=True)
@@ -102,7 +129,7 @@ class ProjectImage(models.Model):
     """Project images for gallery"""
     
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='project_images/', help_text="Upload project image")
+    image = models.ImageField(upload_to=project_gallery_upload_path, help_text="Upload project image")
     caption = models.CharField(max_length=200, blank=True, null=True)
     is_featured = models.BooleanField(default=False, help_text="Show as main project image")
     

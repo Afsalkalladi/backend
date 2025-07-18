@@ -5,6 +5,14 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 
 
+def team_member_upload_path(instance, filename):
+    """Generate upload path for team member images"""
+    import os
+    name, ext = os.path.splitext(filename)
+    safe_name = "".join(c for c in instance.name if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+    return f'team_members/{instance.team_type}/{safe_name.replace(" ", "_")}{ext}'
+
+
 class User(AbstractUser):
     """Simplified User model using Django's built-in Groups for permissions"""
     
@@ -133,7 +141,7 @@ class TeamMember(models.Model):
     name = models.CharField(max_length=100)
     position = models.CharField(max_length=100, help_text="Role/Position in the team")
     bio = models.TextField(help_text="Brief description about the member")
-    image = models.ImageField(upload_to='team_members/', blank=True, null=True)
+    image = models.ImageField(upload_to=team_member_upload_path, blank=True, null=True)
     
     # Contact Information
     email = models.EmailField(blank=True, null=True)

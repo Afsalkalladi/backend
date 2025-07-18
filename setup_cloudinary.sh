@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# EESA Backend - Cloudinary Setup Script
+# This script helps you set up Cloudinary for file uploads
+
+echo "🚀 EESA Backend - Cloudinary Setup Guide"
+echo "========================================"
+echo ""
+
+echo "📋 Current Status:"
+echo "- Your files are currently stored locally (not in Cloudinary)"
+echo "- Reason: Using demo/fake Cloudinary credentials"
+echo "- Fix: Need to add real Cloudinary credentials to .env file"
+echo ""
+
+echo "🔧 How to get Cloudinary credentials:"
+echo "1. Go to https://cloudinary.com/"
+echo "2. Sign up for a FREE account (no credit card required)"
+echo "3. After signup, go to your Dashboard"
+echo "4. Copy these three values:"
+echo "   - Cloud Name (something like: your-cloud-name)"
+echo "   - API Key (numbers like: 123456789012345)"
+echo "   - API Secret (random string like: AbCdEfGhIjKlMnOpQrStUvWxYz)"
+echo ""
+
+echo "⚙️  How to update your .env file:"
+echo "Replace these lines in your .env file:"
+echo ""
+echo "# Current (fake credentials):"
+echo "CLOUDINARY_CLOUD_NAME=demo"
+echo "CLOUDINARY_API_KEY=123456789012345"
+echo "CLOUDINARY_API_SECRET=demo_secret_key"
+echo ""
+echo "# Replace with (your real credentials):"
+echo "CLOUDINARY_CLOUD_NAME=your-actual-cloud-name"
+echo "CLOUDINARY_API_KEY=your-actual-api-key"
+echo "CLOUDINARY_API_SECRET=your-actual-api-secret"
+echo ""
+
+echo "🔄 After updating credentials:"
+echo "1. Restart your Django server"
+echo "2. Test file uploads - they should now go to Cloudinary"
+echo "3. Check your Cloudinary dashboard to see uploaded files"
+echo ""
+
+echo "📁 Files that will be uploaded to Cloudinary:"
+echo "- Academic resources (PDFs, documents)"
+echo "- Event images and flyers"
+echo "- Gallery photos"
+echo "- Team member photos"
+echo "- Project images and reports"
+echo "- Company logos"
+echo "- Placement resumes"
+echo ""
+
+echo "✅ Benefits of using Cloudinary:"
+echo "- Automatic image optimization"
+echo "- Fast CDN delivery worldwide"
+echo "- Automatic backup"
+echo "- Free tier: 25GB storage + 25GB bandwidth/month"
+echo "- Supports all file types (images, PDFs, documents)"
+echo ""
+
+echo "🆘 Need help? Check the setup verification:"
+echo "python3 test_cloudinary.py"
+echo ""

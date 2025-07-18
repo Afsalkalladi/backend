@@ -4,12 +4,30 @@ from django.core.validators import URLValidator, RegexValidator
 
 User = get_user_model()
 
+
+def company_logo_upload_path(instance, filename):
+    """Generate upload path for company logos"""
+    import os
+    name, ext = os.path.splitext(filename)
+    safe_name = "".join(c for c in instance.name if c.isalnum() or c in (' ', '-', '_')).rstrip()[:25]
+    return f'companies/logos/{safe_name.replace(" ", "_")}{ext}'
+
+
+def resume_upload_path(instance, filename):
+    """Generate upload path for placement resumes"""
+    import os
+    name, ext = os.path.splitext(filename)
+    safe_name = "".join(c for c in instance.student_name if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+    safe_company = "".join(c for c in instance.placement_drive.company.name if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+    return f'placements/resumes/{safe_company.replace(" ", "_")}/{safe_name.replace(" ", "_")}{ext}'
+
+
 class Company(models.Model):
     """Company model for placement opportunities"""
     name = models.CharField(max_length=200, unique=True)
     description = models.TextField(blank=True)
     website = models.URLField(blank=True, validators=[URLValidator()])
-    logo = models.ImageField(upload_to='company_logos/', blank=True, null=True)
+    logo = models.ImageField(upload_to=company_logo_upload_path, blank=True, null=True)
     
     # Company details
     industry = models.CharField(max_length=100, blank=True)
@@ -137,7 +155,7 @@ class PlacementApplication(models.Model):
     
     # Application details
     cover_letter = models.TextField(blank=True)
-    resume = models.FileField(upload_to='placement_resumes/', blank=True, null=True)
+    resume = models.FileField(upload_to=resume_upload_path, blank=True, null=True)
     additional_documents = models.JSONField(default=dict, help_text="Additional documents as JSON")
     
     # Interview details
