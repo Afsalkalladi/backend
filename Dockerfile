@@ -28,6 +28,10 @@ COPY . .
 # Create staticfiles directory and ensure static directory exists
 RUN mkdir -p staticfiles static
 
+# Copy and make entrypoint script executable
+COPY docker-entrypoint.sh .
+RUN chmod +x docker-entrypoint.sh
+
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash app \
     && chown -R app:app /app
@@ -36,5 +40,5 @@ USER app
 # Expose port
 EXPOSE 8000
 
-# Run gunicorn
-CMD ["gunicorn", "eesa_backend.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+# Use entrypoint script that handles migrations and starts server
+CMD ["./docker-entrypoint.sh"]
