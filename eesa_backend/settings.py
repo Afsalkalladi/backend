@@ -98,12 +98,17 @@ TEMPLATES = [
 WSGI_APPLICATION = 'eesa_backend.wsgi.application'
 
 
-# Database configuration
-# Use dj_database_url for Render DATABASE_URL or build from environment credentials
+# Database configuration - CORRECTED VERSION
+# Replace the database section in your settings.py with this:
 DATABASE_URL = config('DATABASE_URL', default=None)
 if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600, ssl_require=True)
+        'default': dj_database_url.config(
+            default=DATABASE_URL, 
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=True
+        )
     }
 else:
     db_name = config('DB_NAME', default=None)
@@ -111,11 +116,17 @@ else:
     db_pass = config('DB_PASSWORD', default=None)
     db_host = config('DB_HOST', default=None)
     db_port = config('DB_PORT', default='5432')
+    
     if db_name and db_user and db_pass and db_host and not db_name.startswith('your_'):
         # Build Postgres URL from environment variables
-        url = f"postgres://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+        # For Supabase, ensure SSL is properly configured
+        url = f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}?sslmode=require"
         DATABASES = {
-            'default': dj_database_url.config(default=url, conn_max_age=600, ssl_require=True)
+            'default': dj_database_url.config(
+                default=url, 
+                conn_max_age=600,
+                conn_health_checks=True
+            )
         }
     else:
         # Fallback to SQLite for local development
@@ -125,6 +136,15 @@ else:
                 'NAME': BASE_DIR / 'db.sqlite3',
             }
         }
+
+# Add connection pooling settings for better Supabase performance
+if 'postgresql' in DATABASES['default'].get('ENGINE', ''):
+    DATABASES['default']['OPTIONS'] = {
+        'MAX_CONNS': 20,
+        'OPTIONS': {
+            'sslmode': 'require',
+        }
+    }
 
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.User'

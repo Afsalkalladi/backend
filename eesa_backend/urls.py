@@ -110,10 +110,27 @@ def force_migrate(request):
         from django.core.management import call_command
         from io import StringIO
         
-        # Capture the output
+        results = {}
+        
+        # List of all apps
+        apps_to_migrate = [
+            'accounts', 'academics', 'careers', 'events', 
+            'gallery', 'placements', 'projects', 'alumni'
+        ]
+        
+        # Make migrations for each app
+        for app in apps_to_migrate:
+            try:
+                out = StringIO()
+                call_command('makemigrations', app, verbosity=2, stdout=out)
+                results[f'makemigrations_{app}'] = out.getvalue()
+            except Exception as e:
+                results[f'makemigrations_{app}_error'] = str(e)
+        
+        # Apply all migrations
         out = StringIO()
         call_command('migrate', verbosity=2, interactive=False, stdout=out)
-        output = out.getvalue()
+        results['migrate_output'] = out.getvalue()
         
         # Check if migrations were applied
         from django.db import connection
@@ -121,17 +138,26 @@ def force_migrate(request):
         cursor.execute("SELECT COUNT(*) FROM django_migrations")
         migration_count = cursor.fetchone()[0]
         
+        # Get all tables
+        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name")
+        tables = cursor.fetchall()
+        table_list = [table[0] for table in tables]
+        
         return JsonResponse({
             'status': 'success',
             'migration_count': migration_count,
-            'output': output,
+            'total_tables': len(table_list),
+            'tables': table_list,
+            'results': results,
             'message': 'Migrations completed'
         })
         
     except Exception as e:
+        import traceback
         return JsonResponse({
             'status': 'error',
             'error': str(e),
+            'traceback': traceback.format_exc(),
             'message': 'Migration failed'
         }, status=500)
 

@@ -18,10 +18,6 @@ class Migration(migrations.Migration):
             model_name='alumnieventregistration',
             name='event',
         ),
-        migrations.AlterUniqueTogether(
-            name='alumnieventregistration',
-            unique_together=None,
-        ),
         migrations.RemoveField(
             model_name='alumnieventregistration',
             name='alumni',

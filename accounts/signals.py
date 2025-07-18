@@ -13,7 +13,7 @@ def create_initial_superuser(sender, **kwargs):
     if sender.name == 'accounts':
         username = 'admin'
         email = 'admin@eesa.com'
-        password = 'eesa2024'
+        password = 'admin123'
         
         if not User.objects.filter(username=username).exists():
             User.objects.create_superuser(
