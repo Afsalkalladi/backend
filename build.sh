@@ -88,20 +88,39 @@ echo "🔍 Migration status..."
 python manage.py showmigrations
 
 echo "🗄️ Running database migrations..."
-python manage.py migrate --no-input --verbosity=2
+python manage.py migrate --no-input --verbosity=2 || {
+    echo "❌ Migration failed! Retrying with more details..."
+    python manage.py showmigrations
+    echo "🔄 Attempting migration again..."
+    python manage.py migrate --no-input --verbosity=2 --traceback
+}
 
 # Verify migrations were applied
 echo "✅ Verifying migrations..."
 python manage.py shell -c "
 from django.db import connection
 cursor = connection.cursor()
-cursor.execute(\"SELECT COUNT(*) FROM django_migrations\")
-count = cursor.fetchone()[0]
-print(f'📊 Applied migrations: {count}')
-if count == 0:
-    print('⚠️ Warning: No migrations found in database')
-else:
-    print('✅ Migrations successfully applied')
+try:
+    cursor.execute('SELECT COUNT(*) FROM django_migrations')
+    count = cursor.fetchone()[0]
+    print(f'📊 Applied migrations: {count}')
+    if count == 0:
+        print('⚠️ Warning: No migrations found in database')
+        print('🔄 Attempting to create migration table...')
+        cursor.execute('CREATE TABLE IF NOT EXISTS django_migrations (id SERIAL PRIMARY KEY, app VARCHAR(255), name VARCHAR(255), applied TIMESTAMP);')
+        print('✅ Migration table created')
+    else:
+        print('✅ Migrations successfully applied')
+        
+    # List some tables to verify
+    cursor.execute(\"SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' LIMIT 10\")
+    tables = cursor.fetchall()
+    print(f'📋 Sample tables: {[t[0] for t in tables]}')
+    
+except Exception as e:
+    print(f'❌ Error verifying migrations: {e}')
+    import traceback
+    traceback.print_exc()
 "
 
 # Check if the management groups script exists and run it
@@ -116,7 +135,28 @@ else
 fi
 
 echo "👤 Creating initial superuser..."
-python manage.py create_initial_superuser
+python manage.py shell -c "
+import os
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+username = 'admin'
+email = 'admin@eesa.com'
+password = 'admin123'
+
+try:
+    if User.objects.filter(username=username).exists():
+        print(f'✅ Superuser {username} already exists')
+    else:
+        user = User.objects.create_superuser(username=username, email=email, password=password)
+        print(f'✅ Superuser {username} created successfully')
+        print(f'📧 Email: {email}')
+        print(f'🔐 Password: {password}')
+except Exception as e:
+    print(f'❌ Error creating superuser: {e}')
+    import traceback
+    traceback.print_exc()
+"
 
 # Verify superuser was created
 echo "🔍 Verifying superuser creation..."

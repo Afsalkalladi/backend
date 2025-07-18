@@ -63,8 +63,23 @@ def debug_info(request):
         cursor = connection.cursor()
         cursor.execute("SELECT 1")
         db_status = "Connected"
+        
+        # Check tables
+        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+        tables = cursor.fetchall()
+        table_list = [table[0] for table in tables]
+        
+        # Check migrations
+        try:
+            cursor.execute("SELECT COUNT(*) FROM django_migrations")
+            migration_count = cursor.fetchone()[0]
+        except:
+            migration_count = 0
+            
     except Exception as e:
         db_status = f"Error: {str(e)}"
+        table_list = []
+        migration_count = 0
     
     return JsonResponse({
         'debug': settings.DEBUG,
@@ -72,6 +87,9 @@ def debug_info(request):
         'static_url': settings.STATIC_URL,
         'static_root': str(settings.STATIC_ROOT) if hasattr(settings, 'STATIC_ROOT') else 'Not set',
         'database_status': db_status,
+        'tables_count': len(table_list),
+        'tables': table_list[:10],  # First 10 tables
+        'migration_count': migration_count,
         'python_version': sys.version,
         'django_version': '5.1.4',
         'environment_vars': {
@@ -82,11 +100,47 @@ def debug_info(request):
         }
     })
 
+@csrf_exempt
+def force_migrate(request):
+    """Force run migrations - USE WITH CAUTION"""
+    if not settings.DEBUG and request.method != 'POST':
+        return JsonResponse({'error': 'Only POST allowed in production'}, status=405)
+    
+    try:
+        from django.core.management import call_command
+        from io import StringIO
+        
+        # Capture the output
+        out = StringIO()
+        call_command('migrate', verbosity=2, interactive=False, stdout=out)
+        output = out.getvalue()
+        
+        # Check if migrations were applied
+        from django.db import connection
+        cursor = connection.cursor()
+        cursor.execute("SELECT COUNT(*) FROM django_migrations")
+        migration_count = cursor.fetchone()[0]
+        
+        return JsonResponse({
+            'status': 'success',
+            'migration_count': migration_count,
+            'output': output,
+            'message': 'Migrations completed'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'error': str(e),
+            'message': 'Migration failed'
+        }, status=500)
+
 urlpatterns = [
     path('', api_root, name='api_root'),
     path('api/', api_root, name='api_root_alt'),
     path('api/dev/endpoints/', api_endpoints, name='api_endpoints_dev'),  # Development only
     path('debug/', debug_info, name='debug_info'),  # Debug endpoint for deployment issues
+    path('force-migrate/', force_migrate, name='force_migrate'),  # Force migration endpoint
     path('eesa/', admin.site.urls),  # Custom admin URL
     
     # API endpoints
