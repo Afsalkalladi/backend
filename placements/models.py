@@ -22,6 +22,13 @@ def resume_upload_path(instance, filename):
     return f'placements/resumes/{safe_company.replace(" ", "_")}/{safe_name.replace(" ", "_")}{ext}'
 
 
+def placement_brochure_upload_path(instance, filename):
+    """Generate upload path for department placement brochures"""
+    import os
+    name, ext = os.path.splitext(filename)
+    return f'placement_brochures/eee_dept/{instance.academic_year.replace("-", "_")}/{filename}'
+
+
 class Company(models.Model):
     """Company model for placement opportunities"""
     name = models.CharField(max_length=200, unique=True)
@@ -79,7 +86,6 @@ class PlacementDrive(models.Model):
     ])
     
     # Requirements
-    eligible_branches = models.JSONField(default=list, help_text="List of eligible branches")
     min_cgpa = models.DecimalField(max_digits=3, decimal_places=2, default=0.0)
     min_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
     eligible_batches = models.JSONField(default=list, help_text="List of eligible graduation years")
@@ -101,6 +107,9 @@ class PlacementDrive(models.Model):
         ('offline', 'Offline'),
         ('hybrid', 'Hybrid'),
     ], default='offline')
+    
+    # Application
+    application_link = models.URLField(default="https://example.com/apply", help_text="Link for students to apply for this placement drive")
     
     # Requirements documents
     required_documents = models.JSONField(default=list, help_text="List of required documents")
@@ -187,28 +196,39 @@ class PlacementApplication(models.Model):
         return f"{self.student.get_full_name()} - {self.drive.title}"
 
 
-class PlacementCoordinator(models.Model):
-    """Placement coordinator/officer model"""
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='placement_coordinator')
-    designation = models.CharField(max_length=100)
-    department = models.CharField(max_length=100, blank=True)
+def student_coordinator_image_upload_path(instance, filename):
+    """Upload path for student coordinator images"""
+    return f'coordinators/images/{instance.user.username}_{filename}'
+
+
+class StudentCoordinator(models.Model):
+    """Student coordinator model for display purposes"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_coordinator')
+    designation = models.CharField(max_length=100, default="Placement Coordinator")
     
-    # Contact details
-    office_phone = models.CharField(max_length=15, blank=True)
-    office_email = models.EmailField(blank=True)
-    office_location = models.CharField(max_length=200, blank=True)
+    # Personal details
+    profile_picture = models.ImageField(
+        upload_to=student_coordinator_image_upload_path, 
+        help_text="Upload coordinator's profile picture"
+    )
+    mobile_number = models.CharField(max_length=15, help_text="Contact mobile number")
+    email = models.EmailField(help_text="Contact email address")
     
-    # Permissions
-    can_create_drives = models.BooleanField(default=True)
-    can_approve_applications = models.BooleanField(default=True)
-    can_manage_companies = models.BooleanField(default=False)
+    # Additional info
+    bio = models.TextField(blank=True, help_text="Brief bio or description")
     
-    # Status
-    is_active = models.BooleanField(default=True)
+    # Display settings
+    is_active = models.BooleanField(default=True, help_text="Show in public listings")
+    display_order = models.IntegerField(default=0, help_text="Order for display (lower numbers appear first)")
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['display_order', 'user__first_name']
+        verbose_name = "Student Coordinator"
+        verbose_name_plural = "Student Coordinators"
     
     def __str__(self):
         return f"{self.user.get_full_name()} - {self.designation}"
@@ -255,7 +275,6 @@ class PlacedStudent(models.Model):
     student_name = models.CharField(max_length=200)
     student_email = models.EmailField()
     roll_number = models.CharField(max_length=50)
-    branch = models.CharField(max_length=100)
     batch_year = models.IntegerField(help_text="Graduation year")
     cgpa = models.DecimalField(max_digits=4, decimal_places=2)
     
@@ -298,3 +317,26 @@ class PlacedStudent(models.Model):
         
     def __str__(self):
         return f"{self.student_name} - {self.company.name} ({self.package_lpa} LPA)"
+
+
+class PlacementBrochure(models.Model):
+    """Department placement brochure/information documents"""
+    title = models.CharField(max_length=200, help_text="Brochure title or description")
+    file = models.FileField(upload_to=placement_brochure_upload_path, help_text="Department placement brochure PDF or document")
+    description = models.TextField(blank=True, help_text="Additional information about the brochure")
+    
+    # Brochure details
+    academic_year = models.CharField(max_length=9, help_text="e.g., 2024-2025")
+    is_current = models.BooleanField(default=True, help_text="Whether this is the current/active brochure")
+    
+    # Metadata
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ['academic_year']
+        
+    def __str__(self):
+        return f"EEE Department - {self.title} ({self.academic_year})"

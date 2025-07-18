@@ -4,12 +4,12 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Q, Count
 from accounts.permissions import IsAdminOrTechnicalHead
-from .models import Company, PlacementDrive, PlacementApplication, PlacementCoordinator, PlacementStatistics
+from .models import Company, PlacementDrive, PlacementApplication, StudentCoordinator, PlacementStatistics
 from .serializers import (
     CompanySerializer, CompanyListSerializer,
     PlacementDriveSerializer, PlacementDriveListSerializer,
     PlacementApplicationSerializer, PlacementApplicationListSerializer,
-    PlacementCoordinatorSerializer, PlacementStatisticsSerializer
+    StudentCoordinatorSerializer, PlacementStatisticsSerializer
 )
 
 

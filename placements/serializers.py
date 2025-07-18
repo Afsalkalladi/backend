@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Company, PlacementDrive, PlacementApplication, PlacementCoordinator, PlacementStatistics, PlacedStudent
+from .models import Company, PlacementDrive, PlacementApplication, StudentCoordinator, PlacementStatistics, PlacedStudent
 
 User = get_user_model()
 
@@ -39,11 +39,12 @@ class PlacementDriveSerializer(serializers.ModelSerializer):
         model = PlacementDrive
         fields = [
             'id', 'company', 'company_id', 'title', 'description', 'job_type',
-            'eligible_branches', 'min_cgpa', 'min_percentage', 'eligible_batches',
+            'min_cgpa', 'min_percentage', 'eligible_batches',
             'package_lpa', 'package_details', 'registration_start', 'registration_end',
-            'drive_date', 'result_date', 'location', 'drive_mode', 'required_documents',
-            'additional_info', 'is_active', 'is_featured', 'created_at', 'updated_at',
-            'created_by', 'is_registration_open', 'is_upcoming', 'applications_count'
+            'drive_date', 'result_date', 'location', 'drive_mode', 'application_link',
+            'required_documents', 'additional_info', 'is_active', 'is_featured', 
+            'created_at', 'updated_at', 'created_by', 'is_registration_open', 
+            'is_upcoming', 'applications_count'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
     
@@ -85,19 +86,16 @@ class PlacementApplicationSerializer(serializers.ModelSerializer):
         return obj.drive.company.name
 
 
-class PlacementCoordinatorSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    user_id = serializers.IntegerField(write_only=True)
+class StudentCoordinatorSerializer(serializers.ModelSerializer):
+    user_details = UserSerializer(source='user', read_only=True)
     
     class Meta:
-        model = PlacementCoordinator
+        model = StudentCoordinator
         fields = [
-            'id', 'user', 'user_id', 'designation', 'department', 'office_phone',
-            'office_email', 'office_location', 'can_create_drives', 
-            'can_approve_applications', 'can_manage_companies', 'is_active',
+            'id', 'user', 'user_details', 'designation', 'profile_picture', 
+            'mobile_number', 'email', 'bio', 'is_active', 'display_order', 
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class PlacementStatisticsSerializer(serializers.ModelSerializer):

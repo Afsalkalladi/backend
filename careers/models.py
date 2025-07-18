@@ -156,7 +156,14 @@ class CertificateOpportunity(models.Model):
     
     # Certificate benefits
     industry_recognized = models.BooleanField(default=False)
-    university_credit = models.BooleanField(default=False)
+    university_credit = models.BooleanField(
+        default=False, 
+        help_text="Check this if the certification provides university credit"
+    )
+    credit_hours = models.DecimalField(
+        max_digits=4, decimal_places=1, blank=True, null=True,
+        help_text="Enter credit hours ONLY if university credit is available. Leave blank if university credit is not checked."
+    )
     
     # Meta fields
     posted_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posted_certificates')
@@ -167,6 +174,27 @@ class CertificateOpportunity(models.Model):
     
     class Meta:
         ordering = ['-posted_at']
+        
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        
+        # Validate credit system with clear error messages
+        if not self.university_credit and self.credit_hours:
+            raise ValidationError({
+                'credit_hours': 'You cannot enter credit hours when "University Credit" is not checked. Either check "University Credit" or clear the credit hours field.'
+            })
+        
+        if self.university_credit and not self.credit_hours:
+            raise ValidationError({
+                'credit_hours': 'You must specify credit hours when "University Credit" is checked. Please enter the number of credit hours (e.g., 3.0).'
+            })
+        
+    def save(self, *args, **kwargs):
+        # Clear credit_hours if university_credit is False
+        if not self.university_credit:
+            self.credit_hours = None
+        self.clean()
+        super().save(*args, **kwargs)
         
     def __str__(self):
         return f"{self.title} - {self.provider}"

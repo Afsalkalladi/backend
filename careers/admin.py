@@ -54,7 +54,7 @@ class InternshipOpportunityAdmin(admin.ModelAdmin):
 
 @admin.register(CertificateOpportunity)
 class CertificateOpportunityAdmin(admin.ModelAdmin):
-    list_display = ['title', 'provider', 'certificate_type', 'is_free', 'percentage_offer', 'validity_till', 'industry_recognized', 'posted_by', 'posted_at', 'is_active']
+    list_display = ['title', 'provider', 'certificate_type', 'is_free', 'university_credit', 'percentage_offer', 'validity_till', 'industry_recognized', 'posted_by', 'posted_at', 'is_active']
     list_filter = ['provider', 'certificate_type', 'is_free', 'industry_recognized', 'university_credit', 'financial_aid_available', 'is_active', 'posted_at']
     search_fields = ['title', 'provider', 'description', 'skills_covered']
     readonly_fields = ['posted_at', 'created_at', 'updated_at']
@@ -73,11 +73,16 @@ class CertificateOpportunityAdmin(admin.ModelAdmin):
         ('Schedule & Links', {
             'fields': ('course_url', 'registration_deadline', 'start_date')
         }),
-        ('Benefits', {
-            'fields': ('industry_recognized', 'university_credit')
+        ('University Credits', {
+            'fields': ('industry_recognized', 'university_credit', 'credit_hours'),
+            'description': 'Only enter credit hours if university credit is checked. The form will validate this automatically.'
         }),
         ('Meta', {
             'fields': ('posted_by', 'is_active', 'posted_at', 'created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
+        
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        return form

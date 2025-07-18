@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Company, PlacementDrive, PlacementCoordinator, PlacementStatistics, PlacedStudent
+from .models import Company, PlacementDrive, StudentCoordinator, PlacementStatistics, PlacedStudent, PlacementBrochure
 
 
 @admin.register(Company)
@@ -50,7 +50,7 @@ class PlacementDriveAdmin(admin.ModelAdmin):
             'fields': ('company', 'title', 'description', 'job_type')
         }),
         ('Requirements', {
-            'fields': ('eligible_branches', 'min_cgpa', 'min_percentage', 'eligible_batches')
+            'fields': ('min_cgpa', 'min_percentage', 'eligible_batches')
         }),
         ('Package Details', {
             'fields': ('package_lpa', 'package_details')
@@ -59,8 +59,8 @@ class PlacementDriveAdmin(admin.ModelAdmin):
             'fields': ('registration_start', 'registration_end', 'drive_date', 'result_date'),
             'description': 'All dates are required for proper drive functionality'
         }),
-        ('Drive Details', {
-            'fields': ('location', 'drive_mode', 'required_documents', 'additional_info')
+        ('Application & Drive Details', {
+            'fields': ('application_link', 'location', 'drive_mode', 'required_documents', 'additional_info')
         }),
         ('Status', {
             'fields': ('is_active', 'is_featured')
@@ -88,31 +88,39 @@ class PlacementDriveAdmin(admin.ModelAdmin):
 # PlacementApplication removed from admin - managed through PlacementDrive interface
 
 
-@admin.register(PlacementCoordinator)
-class PlacementCoordinatorAdmin(admin.ModelAdmin):
-    list_display = ['user', 'designation', 'department', 'is_active']
-    list_filter = ['department', 'is_active', 'can_create_drives', 'can_approve_applications']
-    search_fields = ['user__first_name', 'user__last_name', 'user__email', 'designation', 'department']
+@admin.register(StudentCoordinator)
+class StudentCoordinatorAdmin(admin.ModelAdmin):
+    list_display = ['user', 'designation', 'mobile_number', 'email', 'is_active', 'display_order']
+    list_filter = ['is_active', 'designation']
+    search_fields = ['user__username', 'user__first_name', 'user__last_name', 'mobile_number', 'email']
     readonly_fields = ['created_at', 'updated_at']
+    list_editable = ['is_active', 'display_order']
     
     fieldsets = (
-        ('Basic Information', {
-            'fields': ('user', 'designation', 'department')
+        ('User Information', {
+            'fields': ('user', 'designation')
         }),
         ('Contact Details', {
-            'fields': ('office_phone', 'office_email', 'office_location')
+            'fields': ('mobile_number', 'email', 'profile_picture')
         }),
-        ('Permissions', {
-            'fields': ('can_create_drives', 'can_approve_applications', 'can_manage_companies')
+        ('Additional Information', {
+            'fields': ('bio',)
         }),
-        ('Status', {
-            'fields': ('is_active',)
+        ('Display Settings', {
+            'fields': ('is_active', 'display_order')
         }),
         ('Metadata', {
             'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         })
     )
+    
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        # Pre-populate email with user's email if creating new coordinator
+        if not obj and 'user' in form.base_fields:
+            form.base_fields['email'].help_text += " (Will auto-populate from selected user)"
+        return form
 
 
 @admin.register(PlacementStatistics)
@@ -157,8 +165,8 @@ class PlacementStatisticsAdmin(admin.ModelAdmin):
 
 @admin.register(PlacedStudent)
 class PlacedStudentAdmin(admin.ModelAdmin):
-    list_display = ['student_name', 'company', 'job_title', 'package_lpa', 'batch_year', 'branch', 'is_verified', 'offer_date']
-    list_filter = ['batch_year', 'branch', 'job_type', 'is_verified', 'company', 'offer_date']
+    list_display = ['student_name', 'company', 'job_title', 'package_lpa', 'batch_year', 'is_verified', 'offer_date']
+    list_filter = ['batch_year', 'job_type', 'is_verified', 'company', 'offer_date']
     search_fields = ['student_name', 'student_email', 'roll_number', 'company__name', 'job_title']
     readonly_fields = ['created_by', 'created_at', 'updated_at']
     list_editable = ['is_verified']
@@ -166,7 +174,7 @@ class PlacedStudentAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Student Information', {
-            'fields': ('student_name', 'student_email', 'roll_number', 'branch', 'batch_year', 'cgpa', 'student_photo')
+            'fields': ('student_name', 'student_email', 'roll_number', 'batch_year', 'cgpa', 'student_photo')
         }),
         ('Placement Details', {
             'fields': ('company', 'placement_drive', 'job_title', 'package_lpa', 'package_details', 'work_location', 'job_type')
@@ -189,4 +197,34 @@ class PlacedStudentAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         if not change:  # If creating new object
             obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(PlacementBrochure)
+class PlacementBrochureAdmin(admin.ModelAdmin):
+    list_display = ['title', 'academic_year', 'is_current', 'uploaded_by', 'created_at']
+    list_filter = ['academic_year', 'is_current', 'created_at']
+    search_fields = ['title', 'description']
+    readonly_fields = ['uploaded_by', 'created_at', 'updated_at']
+    list_editable = ['is_current']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('title', 'description', 'academic_year')
+        }),
+        ('File Upload', {
+            'fields': ('file',)
+        }),
+        ('Status', {
+            'fields': ('is_current',)
+        }),
+        ('Metadata', {
+            'fields': ('uploaded_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # If creating new object
+            obj.uploaded_by = request.user
         super().save_model(request, obj, form, change)
