@@ -53,9 +53,9 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = [
-            'id', 'title', 'description', 'abstract', 'category', 'github_url', 
-            'demo_url', 'project_report', 'created_by', 'team_members', 'images', 
-            'videos', 'featured_image', 'featured_video', 'created_at', 'updated_at'
+            'id', 'title', 'description', 'abstract', 'category', 'student_batch',
+            'github_url', 'demo_url', 'project_report', 'created_by', 'team_members', 
+            'images', 'videos', 'featured_image', 'featured_video', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
 
@@ -70,7 +70,7 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = [
-            'title', 'description', 'abstract', 'category', 'github_url', 
+            'title', 'description', 'abstract', 'category', 'student_batch', 'github_url', 
             'demo_url', 'project_report', 'team_members', 'images', 'videos'
         ]
     
@@ -110,7 +110,7 @@ class ProjectUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = [
-            'title', 'description', 'abstract', 'category', 'github_url', 
+            'title', 'description', 'abstract', 'category', 'student_batch', 'github_url', 
             'demo_url', 'project_report', 'team_members', 'images', 'videos'
         ]
     

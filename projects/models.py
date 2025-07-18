@@ -53,10 +53,8 @@ class Project(models.Model):
     abstract = models.TextField(blank=True, null=True, help_text="Project abstract or summary")
     category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
     
-    # Student Information (since students can't create accounts)
-    student_names = models.TextField(blank=True, null=True, help_text="Names of students who worked on this project")
+    # Student Information
     student_batch = models.CharField(max_length=20, blank=True, null=True, help_text="e.g., 2021-2025")
-    student_department = models.CharField(max_length=100, default="Electronics Engineering")
     
     # Files
     project_report = models.FileField(upload_to=project_report_upload_path, blank=True, null=True, help_text="Upload project report (PDF)")
@@ -75,6 +73,8 @@ class Project(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        verbose_name = "Project"
+        verbose_name_plural = "Projects"
         ordering = ['-is_featured', '-created_at']
         indexes = [
             models.Index(fields=['category']),
