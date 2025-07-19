@@ -1,13 +1,14 @@
 """
 Custom storage configurations for EESA Backend
-Provides fallback between Cloudinary and local storage
+Provides fallback between Cloudinary and local storage with proper PDF handling
 """
 
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
-from cloudinary_storage.storage import MediaCloudinaryStorage
+from cloudinary_storage.storage import MediaCloudinaryStorage, RawMediaCloudinaryStorage
 from decouple import config
 import os
+from pathlib import Path
 
 
 class SmartFileStorage:
@@ -30,6 +31,95 @@ class SmartFileStorage:
         else:
             # Use local storage for development
             return FileSystemStorage()
+
+
+class PDFCloudinaryStorage(RawMediaCloudinaryStorage):
+    """
+    Custom Cloudinary storage for PDF and document files
+    Uses /raw/upload/ endpoint instead of /image/upload/
+    Ensures public access for all uploads
+    """
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Override default options to ensure public access
+        self.options = {
+            'resource_type': 'auto',
+            'access_mode': 'public',
+            'type': 'upload',
+            'use_filename': True,
+            'unique_filename': True,
+            'overwrite': False,
+        }
+    
+    def _save(self, name, content):
+        # Ensure the file is saved with public access
+        try:
+            # Add public access options to upload
+            if hasattr(self, 'options'):
+                content.cloudinary_options = self.options
+            return super()._save(name, content)
+        except Exception as e:
+            print(f"Cloudinary upload error: {e}")
+            # Fallback behavior
+            return super()._save(name, content)
+
+
+class PublicRawMediaCloudinaryStorage(RawMediaCloudinaryStorage):
+    """
+    Public Cloudinary storage that ensures all uploads are publicly accessible
+    """
+    
+    def get_available_name(self, name, max_length=None):
+        # Use the original filename logic but ensure public access
+        return super().get_available_name(name, max_length)
+    
+    def url(self, name):
+        # Ensure URLs are always public (no signed URLs)
+        url = super().url(name)
+        # Remove any authentication parameters that might make it private
+        if '?signature=' in url:
+            url = url.split('?signature=')[0]
+        return url
+
+
+class SmartCloudinaryStorage:
+    """
+    Smart storage that uses appropriate Cloudinary endpoint based on file type
+    """
+    
+    # File extensions that should use raw upload
+    RAW_FILE_EXTENSIONS = {'.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.xlsx', '.xls', '.zip', '.rar'}
+    
+    @staticmethod
+    def get_storage_for_file(filename):
+        """Get appropriate storage based on file extension"""
+        cloud_name = config('CLOUDINARY_CLOUD_NAME', default='dummy')
+        
+        if cloud_name not in ['dummy', 'demo']:
+            file_ext = Path(filename).suffix.lower()
+            
+            if file_ext in SmartCloudinaryStorage.RAW_FILE_EXTENSIONS:
+                # Use raw storage for documents/PDFs
+                return PDFCloudinaryStorage()
+            else:
+                # Use image storage for images
+                return MediaCloudinaryStorage()
+        else:
+            return FileSystemStorage()
+
+
+class SmartFileField:
+    """
+    Custom file field that automatically chooses the right Cloudinary storage
+    """
+    
+    @staticmethod
+    def get_storage():
+        """Return a function that determines storage based on filename"""
+        def _storage_func(filename):
+            return SmartCloudinaryStorage.get_storage_for_file(filename)
+        return _storage_func
 
 
 def academic_resource_upload_path(instance, filename):

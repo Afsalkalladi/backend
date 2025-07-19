@@ -170,7 +170,15 @@ CLOUDINARY_STORAGE = {
     'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default='dummy'),
     'API_KEY': config('CLOUDINARY_API_KEY', default='dummy'),
     'API_SECRET': config('CLOUDINARY_API_SECRET', default='dummy'),
+    'SECURE': True,
+    'MEDIA_TAG': 'media',
+    'INVALID_VIDEO_ERROR_MESSAGE': 'Please upload a valid video file.',
+    'EXCLUDE_DELETE_ORPHANED_MEDIA_PATHS': (),
+    'STATIC_TAG': 'static',
 }
+
+# Additional Cloudinary settings for public access
+CLOUDINARY_URL = config('CLOUDINARY_URL', default=None)
 
 # Configure storage based on Cloudinary availability
 cloud_name = CLOUDINARY_STORAGE['CLOUD_NAME']
@@ -181,19 +189,23 @@ if cloud_name not in ['dummy', 'demo', ''] and len(cloud_name) > 3:
             cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
             api_key=CLOUDINARY_STORAGE['API_KEY'],
             api_secret=CLOUDINARY_STORAGE['API_SECRET'],
-            secure=True
+            secure=True,
+            # Ensure all uploads are public by default
+            upload_preset='public_uploads',
+            resource_type='auto',
+            access_mode='public',
         )
         
-        # Use Cloudinary for media files, Whitenoise for static files
+        # Use Cloudinary RAW storage for all media files (handles PDFs correctly with public access)
         STORAGES = {
             "default": {
-                "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+                "BACKEND": "utils.storage.PublicRawMediaCloudinaryStorage",
             },
             "staticfiles": {
                 "BACKEND": "whitenoise.storage.StaticFilesStorage",
             },
         }
-        print("✅ Using Cloudinary for media files")
+        print("✅ Using Cloudinary PUBLIC RAW storage for media files (supports PDFs with public access)")
         
     except Exception as e:
         print(f"⚠️ Cloudinary configuration failed: {e}")
