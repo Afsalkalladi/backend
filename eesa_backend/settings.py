@@ -279,20 +279,34 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
-# CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-    "http://localhost:3003",
-    "http://127.0.0.1:3003",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-]
+# CORS settings - Environment based
+if 'RENDER' in os.environ:
+    # Production CORS settings
+    cors_origins = config('CORS_ALLOWED_ORIGINS', default='')
+    if cors_origins:
+        CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',')]
+    else:
+        # Fallback for production - allow your frontend domains
+        CORS_ALLOWED_ORIGINS = [
+            "https://forntend-nine.vercel.app",
+            "https://forntend-ceh1ty1ij-afsalkalladis-projects.vercel.app",
+        ]
+    CORS_ALLOW_ALL_ORIGINS = False
+else:
+    # Development CORS settings
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:3003",
+        "http://127.0.0.1:3003",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    ]
+    CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_HEADERS = [
     'accept',
