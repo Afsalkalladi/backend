@@ -206,16 +206,16 @@ if cloud_name not in ['dummy', 'demo', ''] and len(cloud_name) > 3:
             import cloudinary.api
             cloudinary.api.ping()
             
-            # Use Cloudinary RAW storage for all media files (handles PDFs correctly with public access)
+            # Use Cloudinary's default storage which automatically handles different file types
             STORAGES = {
                 "default": {
-                    "BACKEND": "utils.storage.PublicRawMediaCloudinaryStorage",
+                    "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
                 },
                 "staticfiles": {
                     "BACKEND": "whitenoise.storage.StaticFilesStorage",
                 },
             }
-            print("✅ Using Cloudinary PUBLIC RAW storage for media files (supports PDFs with public access)")
+            print("✅ Using Cloudinary default storage for media files (automatically handles PDFs and images)")
             
         except Exception as api_error:
             error_msg = str(api_error).lower()

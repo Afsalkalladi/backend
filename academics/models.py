@@ -129,19 +129,22 @@ class AcademicResource(models.Model):
     file = models.FileField(
         upload_to=academic_resource_upload_path,
         validators=[FileExtensionValidator(allowed_extensions=['pdf'])],
-        help_text="Upload only PDF files. Max size: 15MB."
+        help_text="Upload only PDF files. Maximum file size: 15MB. Only PDF format is supported for academic resources."
     )
     file_size = models.BigIntegerField(blank=True, null=True)  # in bytes
 
     def clean(self):
         super().clean()
         if self.file:
+            # Check file extension
             if not self.file.name.lower().endswith('.pdf'):
                 from django.core.exceptions import ValidationError
-                raise ValidationError({'file': 'Only PDF files are allowed.'})
+                raise ValidationError({'file': 'Only PDF files are allowed. Please upload a PDF document.'})
+            
+            # Check file size (15MB limit)
             if self.file.size > 15 * 1024 * 1024:
                 from django.core.exceptions import ValidationError
-                raise ValidationError({'file': 'File size must be less than 15MB.'})
+                raise ValidationError({'file': 'File size must be less than 15MB. Please compress the file or use a smaller document.'})
     
     # Resource-specific fields
     module_number = models.PositiveIntegerField(

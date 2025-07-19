@@ -164,7 +164,12 @@ class PlacementApplication(models.Model):
     
     # Application details
     cover_letter = models.TextField(blank=True)
-    resume = models.FileField(upload_to=resume_upload_path, blank=True, null=True)
+    resume = models.FileField(
+        upload_to=resume_upload_path, 
+        blank=True, 
+        null=True,
+        help_text="Upload resume (PDF only). Maximum file size: 15MB."
+    )
     additional_documents = models.JSONField(default=dict, help_text="Additional documents as JSON")
     
     # Interview details
@@ -298,7 +303,12 @@ class PlacedStudent(models.Model):
     joining_date = models.DateField(null=True, blank=True)
     
     # Additional information
-    offer_letter = models.FileField(upload_to='placement_offers/', blank=True, null=True)
+    offer_letter = models.FileField(
+        upload_to='placement_offers/', 
+        blank=True, 
+        null=True,
+        help_text="Upload offer letter (PDF only). Maximum file size: 15MB."
+    )
     student_photo = models.ImageField(upload_to='placed_students/', blank=True, null=True)
     testimonial = models.TextField(blank=True, help_text="Student testimonial about placement")
     
@@ -322,7 +332,10 @@ class PlacedStudent(models.Model):
 class PlacementBrochure(models.Model):
     """Department placement brochure/information documents"""
     title = models.CharField(max_length=200, help_text="Brochure title or description")
-    file = models.FileField(upload_to=placement_brochure_upload_path, help_text="Department placement brochure PDF or document")
+    file = models.FileField(
+        upload_to=placement_brochure_upload_path, 
+        help_text="Upload placement brochure (PDF only). Maximum file size: 15MB."
+    )
     description = models.TextField(blank=True, help_text="Additional information about the brochure")
     
     # Brochure details

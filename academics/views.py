@@ -151,13 +151,32 @@ def upload_academic_resource(request):
         if field not in request.data:
             return Response({'error': f'{field} is required'}, status=status.HTTP_400_BAD_REQUEST)
     
+    # File validation
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check file extension
+    if not uploaded_file.name.lower().endswith('.pdf'):
+        return Response({
+            'error': 'Only PDF files are allowed. Please upload a PDF document.',
+            'help_text': 'Upload only PDF files. Maximum file size: 15MB. Only PDF format is supported for academic resources.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check file size (15MB limit)
+    if uploaded_file.size > 15 * 1024 * 1024:
+        return Response({
+            'error': 'File size must be less than 15MB. Please compress the file or use a smaller document.',
+            'help_text': 'Upload only PDF files. Maximum file size: 15MB. Only PDF format is supported for academic resources.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
     try:
         category = AcademicCategory.objects.get(id=request.data['category'])
         resource = AcademicResource.objects.create(
             title=request.data['title'],
             description=request.data.get('description', ''),
             category=category,
-            file=request.FILES['file'],
+            file=uploaded_file,
             uploaded_by=request.user,
             module_number=request.data.get('module_number', 1),
             exam_type=request.data.get('exam_type', ''),

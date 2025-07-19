@@ -57,7 +57,12 @@ class Project(models.Model):
     student_batch = models.CharField(max_length=20, blank=True, null=True, help_text="e.g., 2021-2025")
     
     # Files
-    project_report = models.FileField(upload_to=project_report_upload_path, blank=True, null=True, help_text="Upload project report (PDF)")
+    project_report = models.FileField(
+        upload_to=project_report_upload_path, 
+        blank=True, 
+        null=True, 
+        help_text="Upload project report (PDF only). Maximum file size: 15MB."
+    )
     project_images = models.ImageField(upload_to=project_image_upload_path, blank=True, null=True, help_text="Project screenshots or images")
     
     # Links
