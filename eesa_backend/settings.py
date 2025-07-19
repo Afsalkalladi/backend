@@ -175,6 +175,14 @@ CLOUDINARY_STORAGE = {
     'INVALID_VIDEO_ERROR_MESSAGE': 'Please upload a valid video file.',
     'EXCLUDE_DELETE_ORPHANED_MEDIA_PATHS': (),
     'STATIC_TAG': 'static',
+    # Default upload options for public access
+    'OPTIONS': {
+        'access_mode': 'public',
+        'resource_type': 'auto',
+        'use_filename': True,
+        'unique_filename': True,
+        'overwrite': False,
+    }
 }
 
 # Additional Cloudinary settings for public access
@@ -190,22 +198,46 @@ if cloud_name not in ['dummy', 'demo', ''] and len(cloud_name) > 3:
             api_key=CLOUDINARY_STORAGE['API_KEY'],
             api_secret=CLOUDINARY_STORAGE['API_SECRET'],
             secure=True,
-            # Ensure all uploads are public by default
-            upload_preset='public_uploads',
-            resource_type='auto',
-            access_mode='public',
         )
         
-        # Use Cloudinary RAW storage for all media files (handles PDFs correctly with public access)
-        STORAGES = {
-            "default": {
-                "BACKEND": "utils.storage.PublicRawMediaCloudinaryStorage",
-            },
-            "staticfiles": {
-                "BACKEND": "whitenoise.storage.StaticFilesStorage",
-            },
-        }
-        print("✅ Using Cloudinary PUBLIC RAW storage for media files (supports PDFs with public access)")
+        # Test Cloudinary connection and account status
+        try:
+            # Try a simple API call to test account status
+            import cloudinary.api
+            cloudinary.api.ping()
+            
+            # Use Cloudinary RAW storage for all media files (handles PDFs correctly with public access)
+            STORAGES = {
+                "default": {
+                    "BACKEND": "utils.storage.PublicRawMediaCloudinaryStorage",
+                },
+                "staticfiles": {
+                    "BACKEND": "whitenoise.storage.StaticFilesStorage",
+                },
+            }
+            print("✅ Using Cloudinary PUBLIC RAW storage for media files (supports PDFs with public access)")
+            
+        except Exception as api_error:
+            error_msg = str(api_error).lower()
+            if 'untrusted' in error_msg:
+                print(f"⚠️ Cloudinary account is marked as untrusted: {api_error}")
+                print("💡 To fix this:")
+                print("   1. Verify your email in Cloudinary dashboard")
+                print("   2. Add a payment method (even for free tier)")
+                print("   3. Complete account verification")
+                print("🔄 Falling back to local storage for now...")
+            else:
+                print(f"⚠️ Cloudinary API test failed: {api_error}")
+            
+            # Fallback to local storage
+            STORAGES = {
+                "default": {
+                    "BACKEND": "django.core.files.storage.FileSystemStorage",
+                },
+                "staticfiles": {
+                    "BACKEND": "whitenoise.storage.StaticFilesStorage",
+                },
+            }
         
     except Exception as e:
         print(f"⚠️ Cloudinary configuration failed: {e}")
@@ -331,49 +363,3 @@ CORS_ALLOWED_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
-
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
-
-# Logging configuration
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'INFO',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'django.log',
-            'formatter': 'verbose',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'django.db.backends': {
-            'handlers': ['console'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
-            'propagate': False,
-        },
-    },
-}

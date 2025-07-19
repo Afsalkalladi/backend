@@ -68,7 +68,21 @@ class PDFCloudinaryStorage(RawMediaCloudinaryStorage):
 class PublicRawMediaCloudinaryStorage(RawMediaCloudinaryStorage):
     """
     Public Cloudinary storage that ensures all uploads are publicly accessible
+    Works with untrusted Cloudinary accounts by using safer upload options
     """
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Safe options for untrusted accounts
+        self.options = {
+            'resource_type': 'auto',  # Let Cloudinary detect the type
+            'type': 'upload',  # Use regular upload, not authenticated
+            'access_mode': 'public',  # Ensure public access
+            'use_filename': False,  # Let Cloudinary generate filename
+            'unique_filename': True,
+            'overwrite': False,
+            'invalidate': True,  # Clear cache
+        }
     
     def get_available_name(self, name, max_length=None):
         # Use the original filename logic but ensure public access
@@ -81,6 +95,84 @@ class PublicRawMediaCloudinaryStorage(RawMediaCloudinaryStorage):
         if '?signature=' in url:
             url = url.split('?signature=')[0]
         return url
+    
+    def _save(self, name, content):
+        """Override save to handle various Cloudinary errors with progressive fallbacks"""
+        file_extension = Path(name).suffix.lower() if name else 'unknown'
+        print(f"🔄 Uploading file: {name} (ext: {file_extension})")
+        
+        # Define supported extensions for better error handling
+        DEFINITELY_SUPPORTED = {'.pdf', '.txt', '.jpg', '.jpeg', '.png', '.gif', '.webp'}
+        POSSIBLY_SUPPORTED = {'.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'}
+        
+        try:
+            # First attempt: Standard RAW upload
+            return super()._save(name, content)
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            print(f"❌ Primary upload failed for {name}: {e}")
+            
+            # Handle specific error types
+            if 'untrusted' in error_msg or 'customer is marked as untrusted' in error_msg:
+                print("💡 Cloudinary account verification needed - please verify your account")
+                raise e
+                
+            elif 'unsupported' in error_msg or 'format' in error_msg or 'invalid' in error_msg:
+                print(f"⚠️ Format issue detected for {file_extension}")
+                
+                # Try progressive fallbacks for format issues
+                fallback_attempts = [
+                    {
+                        'name': 'AUTO resource type',
+                        'params': {
+                            'resource_type': 'auto',
+                            'type': 'upload',
+                            'access_mode': 'public'
+                        }
+                    },
+                    {
+                        'name': 'RAW with minimal options',
+                        'params': {
+                            'resource_type': 'raw',
+                            'type': 'upload'
+                        }
+                    },
+                    {
+                        'name': 'Basic upload',
+                        'params': {
+                            'resource_type': 'raw'
+                        }
+                    }
+                ]
+                
+                for attempt in fallback_attempts:
+                    try:
+                        print(f"🔄 Trying fallback: {attempt['name']}")
+                        
+                        import cloudinary.uploader
+                        result = cloudinary.uploader.upload(content, **attempt['params'])
+                        
+                        print(f"✅ Fallback successful with {attempt['name']}")
+                        return result.get('public_id')
+                        
+                    except Exception as fallback_error:
+                        print(f"❌ Fallback {attempt['name']} failed: {fallback_error}")
+                        continue
+                
+                # If all fallbacks fail
+                if file_extension not in DEFINITELY_SUPPORTED:
+                    print(f"💡 {file_extension.upper()} may not be supported by Cloudinary")
+                    print("📋 Definitely supported: PDF, TXT, JPG, PNG, GIF, WEBP")
+                    print("❓ Possibly supported: DOC, DOCX, PPT, PPTX, XLS, XLSX")
+                    print("💡 Consider converting to PDF or using local storage")
+                
+                raise Exception(f"File format {file_extension} not supported by Cloudinary. Consider converting to PDF.")
+                
+            else:
+                # Other types of errors
+                print(f"💡 General upload error - check file size and content")
+                raise e
 
 
 class SmartCloudinaryStorage:
