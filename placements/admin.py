@@ -140,7 +140,7 @@ class PlacementStatisticsAdmin(admin.ModelAdmin):
         ('Package Statistics', {
             'fields': ('highest_package', 'average_package', 'median_package')
         }),
-        ('Company Statistics', {
+        ('Companies Statistics', {
             'fields': ('total_companies_visited', 'total_offers')
         }),
         ('Metadata', {
