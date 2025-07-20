@@ -15,7 +15,23 @@ SECRET_KEY = os.environ.get('SECRET_KEY', get_random_secret_key())
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# Handle ALLOWED_HOSTS properly for production
+ALLOWED_HOSTS_STR = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+if ALLOWED_HOSTS_STR == '*':
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_STR.split(',') if host.strip()]
+    
+# Add common production hosts
+if not DEBUG:
+    ALLOWED_HOSTS.extend([
+        '*.onrender.com',
+        '*.railway.app',
+        '*.herokuapp.com',
+        'localhost',
+        '127.0.0.1',
+        '0.0.0.0'
+    ])
 
 # Application definition
 INSTALLED_APPS = [
@@ -70,46 +86,39 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'eesa_backend.wsgi.application'
 
-# Database configuration based on DEBUG setting
-if DEBUG:
-    # Local development - SQLite + Local Storage
+# Database configuration
+if not DEBUG:
+    # Production - Use individual DB settings (PostgreSQL)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'postgres'),
+            'USER': os.environ.get('DB_USER', 'postgres'),
+            'PASSWORD': os.environ.get('DB_PASSWORD'),
+            'HOST': os.environ.get('DB_HOST'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+        }
+    }
+    print("✅ Using PostgreSQL database for production")
+else:
+    # Development - SQLite
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-    
-    # Local file storage
+    print("✅ Using SQLite database for development")
+
+# File storage configuration
+if DEBUG:
+    # Local development - Local Storage
     MEDIA_URL = '/media/'
     MEDIA_ROOT = BASE_DIR / 'media'
     STATIC_URL = '/static/'
     STATIC_ROOT = BASE_DIR / 'staticfiles'
-    
-    print("✅ Using SQLite database and local file storage")
 else:
-    # Production - PostgreSQL + Cloudinary
-    import dj_database_url
-    
-    # Use DATABASE_URL if available, otherwise use individual DB settings
-    DATABASE_URL = os.environ.get('DATABASE_URL')
-    if DATABASE_URL:
-        DATABASES = {
-            'default': dj_database_url.parse(DATABASE_URL)
-        }
-    else:
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.postgresql',
-                'NAME': os.environ.get('DB_NAME'),
-                'USER': os.environ.get('DB_USER'),
-                'PASSWORD': os.environ.get('DB_PASSWORD'),
-                'HOST': os.environ.get('DB_HOST'),
-                'PORT': os.environ.get('DB_PORT', '5432'),
-            }
-        }
-    
-    # Cloudinary storage
+    # Production - Cloudinary
     CLOUDINARY_STORAGE = {
         'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
         'API_KEY': os.environ.get('CLOUDINARY_API_KEY'),
@@ -119,7 +128,10 @@ else:
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
     STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
     
-    print("✅ Using PostgreSQL database and Cloudinary storage")
+    # Set static and media URLs for production
+    STATIC_URL = '/static/'
+    STATIC_ROOT = BASE_DIR / 'staticfiles'
+    MEDIA_URL = '/media/'
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
