@@ -1,68 +1,143 @@
-from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
+from django.shortcuts import render
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import HttpResponse, Http404
-from django.conf import settings
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework import status
 import os
-from .models import AcademicCategory, AcademicResource, Scheme, Subject
+import json
+
+from .models import Scheme, Subject, AcademicCategory, AcademicResource
+
 
 @api_view(['GET'])
-@permission_classes([])  # Remove authentication requirement
+@permission_classes([])
+def schemes_list(request):
+    """List all schemes"""
+    schemes = Scheme.objects.all().order_by('name')
+    schemes_data = []
+    for scheme in schemes:
+        schemes_data.append({
+            'id': scheme.id,
+            'name': scheme.name,
+            'description': scheme.description,
+            'is_active': scheme.is_active,
+        })
+    return Response(schemes_data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_scheme(request):
+    """Create a new scheme (admin only)"""
+    if not request.user.is_superuser:
+        return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+    
+    name = request.data.get('name')
+    description = request.data.get('description', '')
+    
+    if not name:
+        return Response({'error': 'Name is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    scheme = Scheme.objects.create(name=name, description=description)
+    return Response({
+        'id': scheme.id,
+        'name': scheme.name,
+        'message': 'Scheme created successfully'
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([])
+def subjects_by_scheme_semester(request):
+    """Get subjects by scheme and semester"""
+    scheme_id = request.GET.get('scheme')
+    semester = request.GET.get('semester')
+    
+    if not scheme_id or not semester:
+        return Response({'error': 'Both scheme and semester are required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    subjects = Subject.objects.filter(scheme_id=scheme_id, semester=semester).order_by('name')
+    subjects_data = []
+    for subject in subjects:
+        subjects_data.append({
+            'id': subject.id,
+            'name': subject.name,
+            'code': subject.code,
+            'semester': subject.semester,
+            'scheme_name': subject.scheme.name,
+        })
+    return Response(subjects_data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_subject(request):
+    """Create a new subject (admin/tech_head only)"""
+    if not request.user.is_superuser and request.user.role not in ['admin', 'tech_head']:
+        return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+    
+    required_fields = ['name', 'code', 'scheme', 'semester']
+    for field in required_fields:
+        if field not in request.data:
+            return Response({'error': f'{field} is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        scheme = Scheme.objects.get(id=request.data['scheme'])
+        subject = Subject.objects.create(
+            name=request.data['name'],
+            code=request.data['code'],
+            scheme=scheme,
+            semester=request.data['semester']
+        )
+        return Response({
+            'id': subject.id,
+            'name': subject.name,
+            'message': 'Subject created successfully'
+        }, status=status.HTTP_201_CREATED)
+    except Scheme.DoesNotExist:
+        return Response({'error': 'Scheme not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([])
 def academic_categories_list(request):
     """List all academic categories"""
-    categories = AcademicCategory.objects.all().values(
-        'id', 'name', 'category_type', 'description', 'icon', 'is_active'
-    )
-    return Response(list(categories))
-
-@api_view(['GET'])
-@permission_classes([])  # Remove authentication requirement
-def category_detail(request, category_type):
-    """Get category details and its resources"""
-    try:
-        # Get the first category of this type (in case there are duplicates)
-        category = AcademicCategory.objects.filter(category_type=category_type).first()
-        if not category:
-            return Response({'error': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
-            
-        resources = AcademicResource.objects.filter(category__category_type=category_type, is_approved=True)
-        
-        # Filter by query parameters
-        scheme_id = request.GET.get('scheme')
-        subject_id = request.GET.get('subject')
-        semester = request.GET.get('semester')
-        
-        if scheme_id:
-            resources = resources.filter(scheme_id=scheme_id)
-        if subject_id:
-            resources = resources.filter(subject_id=subject_id)
-        if semester:
-            resources = resources.filter(semester=semester)
-            
-        category_data = {
+    categories = AcademicCategory.objects.filter(is_active=True).order_by('display_order', 'name')
+    categories_data = []
+    for category in categories:
+        categories_data.append({
             'id': category.id,
             'name': category.name,
+            'slug': category.slug,
             'category_type': category.category_type,
             'description': category.description,
             'icon': category.icon,
-            'is_active': category.is_active
-        }
-        
-        resources_data = list(resources.values(
-            'id', 'title', 'description', 'file', 'file_size',
-            'module_number', 'exam_type', 'exam_year', 'author',
-            'download_count', 'created_at', 'updated_at'
-        ))
-        
+        })
+    return Response(categories_data)
+
+
+@api_view(['GET'])
+@permission_classes([])
+def category_detail(request, category_type):
+    """Get category details by type"""
+    try:
+        category = AcademicCategory.objects.get(category_type=category_type, is_active=True)
         return Response({
-            'category': category_data,
-            'resources': resources_data
+            'id': category.id,
+            'name': category.name,
+            'slug': category.slug,
+            'category_type': category.category_type,
+            'description': category.description,
+            'icon': category.icon,
         })
     except AcademicCategory.DoesNotExist:
         return Response({'error': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
+
 
 @api_view(['GET'])
 @permission_classes([])  # Remove authentication requirement
@@ -119,6 +194,65 @@ def academic_resources_list(request):
         })
     return Response(resources_data)
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def unverified_notes(request):
+    """List unverified notes (staff only)"""
+    if not request.user.is_staff:
+        return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+    
+    resources = AcademicResource.objects.filter(is_approved=False).select_related(
+        'category', 'subject', 'uploaded_by'
+    ).order_by('-created_at')
+    
+    resources_data = []
+    for resource in resources:
+        resources_data.append({
+            'id': resource.id,
+            'title': resource.title,
+            'description': resource.description,
+            'file': resource.file.url if resource.file else '',
+            'file_size': resource.file_size,
+            'module_number': resource.module_number,
+            'exam_type': resource.exam_type,
+            'exam_year': resource.exam_year,
+            'author': resource.author,
+            'created_at': resource.created_at,
+            'category': resource.category.category_type,
+            'category_name': resource.category.name,
+            'subject_name': resource.subject.name,
+            'subject_code': resource.subject.code,
+            'uploaded_by_name': f"{resource.uploaded_by.first_name} {resource.uploaded_by.last_name}",
+        })
+    return Response({
+        'unverified_notes': resources_data,
+        'count': resources.count()
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def approve_note(request, pk):
+    """Approve a note (staff only)"""
+    if not request.user.is_staff:
+        return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        resource = AcademicResource.objects.get(pk=pk, is_approved=False)
+        resource.is_approved = True
+        resource.approved_by = request.user
+        resource.approved_at = timezone.now()
+        resource.save()
+        
+        return Response({
+            'message': 'Note approved successfully',
+            'resource_id': resource.id
+        })
+    except AcademicResource.DoesNotExist:
+        return Response({'error': 'Note not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
 @api_view(['GET'])
 def academic_resource_detail(request, pk):
     """Get single academic resource"""
@@ -140,6 +274,7 @@ def academic_resource_detail(request, pk):
         return Response(resource_data)
     except AcademicResource.DoesNotExist:
         return Response({'error': 'Resource not found'}, status=status.HTTP_404_NOT_FOUND)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -188,61 +323,6 @@ def upload_academic_resource(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
-def schemes_list(request):
-    """List all academic schemes"""
-    schemes = Scheme.objects.all().values('id', 'year', 'name', 'description', 'is_active')
-    return Response(list(schemes))
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_scheme(request):
-    """Create new academic scheme"""
-    try:
-        scheme = Scheme.objects.create(
-            year=request.data['year'],
-            name=request.data['name'],
-            description=request.data.get('description', ''),
-            is_active=request.data.get('is_active', True)
-        )
-        return Response({'id': scheme.id, 'message': 'Scheme created successfully'}, 
-                       status=status.HTTP_201_CREATED)
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['GET'])
-def subjects_by_scheme_semester(request):
-    """Get subjects filtered by scheme and semester"""
-    scheme_id = request.GET.get('scheme')
-    semester = request.GET.get('semester')
-    
-    subjects = Subject.objects.all()
-    
-    if scheme_id:
-        subjects = subjects.filter(scheme_id=scheme_id)
-    if semester:
-        subjects = subjects.filter(semester=semester)
-        
-    subjects_data = list(subjects.values('id', 'name', 'code', 'semester', 'credits'))
-    return Response(subjects_data)
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_subject(request):
-    """Create new subject"""
-    try:
-        subject = Subject.objects.create(
-            name=request.data['name'],
-            code=request.data['code'],
-            semester=request.data['semester'],
-            credits=request.data.get('credits', 3),
-            scheme_id=request.data.get('scheme'),
-            description=request.data.get('description', '')
-        )
-        return Response({'id': subject.id, 'message': 'Subject created successfully'}, 
-                       status=status.HTTP_201_CREATED)
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
 @permission_classes([])  # Remove authentication requirement

@@ -19,4 +19,8 @@ urlpatterns = [
     path('resources/<int:pk>/', views.academic_resource_detail, name='academic_resource_detail'),
     path('resources/<int:pk>/download/', views.download_academic_resource, name='download_academic_resource'),
     path('resources/upload/', views.upload_academic_resource, name='upload_academic_resource'),
+    
+    # Unverified notes (staff only)
+    path('unverified-notes/', views.unverified_notes, name='unverified_notes'),
+    path('approve-note/<int:pk>/', views.approve_note, name='approve_note'),
 ]

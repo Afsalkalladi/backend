@@ -1,87 +1,83 @@
 from rest_framework import serializers
-from .models import GalleryCategory, GalleryImage, GalleryAlbum, AlbumImage
+from .models import GalleryCategory, GalleryImage, GalleryAlbum
 
 
 class GalleryCategorySerializer(serializers.ModelSerializer):
-    image_count = serializers.SerializerMethodField()
+    """Serializer for gallery categories"""
+    album_count = serializers.ReadOnlyField()
+    total_images = serializers.ReadOnlyField()
     
     class Meta:
         model = GalleryCategory
-        fields = ['id', 'name', 'description', 'slug', 'image_count', 'is_active']
+        fields = [
+            'id', 'name', 'category_type', 'description', 'slug', 'icon',
+            'is_active', 'display_order', 'album_count', 'total_images',
+            'created_at', 'updated_at'
+        ]
+
+
+class GalleryAlbumSerializer(serializers.ModelSerializer):
+    """Serializer for gallery albums"""
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    image_count = serializers.ReadOnlyField()
     
-    def get_image_count(self, obj):
-        return obj.images.filter(is_public=True).count()
+    class Meta:
+        model = GalleryAlbum
+        fields = [
+            'id', 'name', 'description', 'slug', 'category', 'category_name',
+            'cover_image', 'event_date', 'location', 'is_active', 'is_public',
+            'is_featured', 'display_order', 'image_count', 'created_by',
+            'created_at', 'updated_at'
+        ]
 
 
 class GalleryImageSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source='category.name', read_only=True)
-    uploaded_by_name = serializers.CharField(source='uploaded_by.get_full_name', read_only=True)
-    tag_list = serializers.ReadOnlyField()
+    """Serializer for gallery images"""
+    album_name = serializers.CharField(source='album.name', read_only=True)
+    category_name = serializers.CharField(source='album.category.name', read_only=True)
+    category_type = serializers.CharField(source='album.category.category_type', read_only=True)
     file_size_mb = serializers.ReadOnlyField()
+    tag_list = serializers.ReadOnlyField()
     
     class Meta:
         model = GalleryImage
         fields = [
-            'id', 'title', 'description', 'image', 'thumbnail',
-            'category', 'category_name', 'tags', 'tag_list',
-            'event_name', 'event_date', 'location',
-            'photographer', 'camera_info',
-            'is_featured', 'is_public', 'display_order',
-            'uploaded_by_name', 'file_size_mb',
-            'image_width', 'image_height',
+            'id', 'title', 'description', 'image', 'thumbnail', 'album', 'album_name',
+            'category_name', 'category_type', 'tags', 'tag_list', 'photographer',
+            'camera_info', 'is_featured', 'is_public', 'display_order',
+            'uploaded_by', 'file_size', 'file_size_mb', 'image_width', 'image_height',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['uploaded_by', 'file_size', 'image_width', 'image_height']
 
 
-class GalleryImageListSerializer(serializers.ModelSerializer):
-    """Simplified serializer for listing images"""
-    category_name = serializers.CharField(source='category.name', read_only=True)
+class GalleryImageCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating gallery images"""
     
     class Meta:
         model = GalleryImage
         fields = [
-            'id', 'title', 'image', 'thumbnail',
-            'category_name', 'event_name', 'event_date',
-            'is_featured', 'created_at'
+            'title', 'description', 'image', 'album', 'tags', 'photographer',
+            'camera_info', 'is_featured', 'is_public', 'display_order'
         ]
-
-
-class AlbumImageSerializer(serializers.ModelSerializer):
-    image = GalleryImageListSerializer(read_only=True)
     
-    class Meta:
-        model = AlbumImage
-        fields = ['image', 'order']
+    def create(self, validated_data):
+        # Set uploaded_by to current user
+        validated_data['uploaded_by'] = self.context['request'].user
+        return super().create(validated_data)
 
 
-class GalleryAlbumSerializer(serializers.ModelSerializer):
-    images = AlbumImageSerializer(many=True, read_only=True)
-    cover_image = GalleryImageListSerializer(read_only=True)
-    image_count = serializers.ReadOnlyField()
-    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+class GalleryAlbumCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating gallery albums"""
     
     class Meta:
         model = GalleryAlbum
         fields = [
-            'id', 'name', 'description', 'slug', 'cover_image',
-            'event_date', 'location',
-            'is_public', 'is_featured', 'display_order',
-            'image_count', 'created_by_name',
-            'created_at', 'updated_at', 'images'
+            'name', 'description', 'slug', 'category', 'cover_image',
+            'event_date', 'location', 'is_active', 'is_public', 'is_featured', 'display_order'
         ]
-        read_only_fields = ['created_by']
-
-
-class GalleryAlbumListSerializer(serializers.ModelSerializer):
-    """Simplified serializer for listing albums"""
-    cover_image = GalleryImageListSerializer(read_only=True)
-    image_count = serializers.ReadOnlyField()
     
-    class Meta:
-        model = GalleryAlbum
-        fields = [
-            'id', 'name', 'description', 'slug', 'cover_image',
-            'event_date', 'location', 'image_count',
-            'is_featured', 'created_at'
-        ]
+    def create(self, validated_data):
+        # Set created_by to current user
+        validated_data['created_by'] = self.context['request'].user
+        return super().create(validated_data)

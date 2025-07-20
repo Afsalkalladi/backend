@@ -12,7 +12,7 @@ def team_member_upload_path(instance, filename):
 
 
 class User(AbstractUser):
-    """Simplified User model using Django's built-in Groups for permissions"""
+    """Custom User model with groups-based permissions"""
     
     email = models.EmailField(unique=True)
     mobile_number = models.CharField(
@@ -34,50 +34,6 @@ class User(AbstractUser):
     def is_staff_member(self):
         """Check if user is staff based on groups"""
         return self.is_superuser or self.groups.exists()
-
-
-class EventRegistration(models.Model):
-    """Public event registration - no login required"""
-    
-    # Personal Information
-    name = models.CharField(max_length=200)
-    email = models.EmailField()
-    mobile_number = models.CharField(
-        max_length=15,
-        validators=[RegexValidator(regex=r'^\+?1?\d{9,15}$', message="Enter a valid mobile number")]
-    )
-    
-    # Academic Information
-    semester = models.CharField(max_length=10)
-    department = models.CharField(max_length=100)
-    
-    # Event Information (we'll import this after events model is updated)
-    event_title = models.CharField(max_length=200)  # Store event title for now
-    
-    # Payment Status
-    payment_status = models.CharField(
-        max_length=20,
-        choices=[
-            ('pending', 'Payment Pending'),
-            ('paid', 'Payment Completed'),
-            ('exempted', 'Fee Exempted'),
-        ],
-        default='pending'
-    )
-    payment_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    payment_verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    payment_date = models.DateTimeField(blank=True, null=True)
-    
-    # Metadata
-    registered_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['-registered_at']
-        unique_together = ['email', 'event_title']  # Prevent duplicate registrations
-    
-    def __str__(self):
-        return f"{self.name} - {self.event_title} ({self.payment_status})"
 
 
 class TeamMember(models.Model):
@@ -115,4 +71,4 @@ class TeamMember(models.Model):
         verbose_name_plural = "Team Members"
     
     def __str__(self):
-        return f"{self.name} - {self.position} ({self.get_team_type_display()})"
+        return f"{self.name} - {self.position} ({self.get_team_type_display()})" 

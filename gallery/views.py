@@ -1,130 +1,150 @@
-from rest_framework import viewsets, filters, status, permissions
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
-from django.db.models import Q
-from django_filters.rest_framework import DjangoFilterBackend
+from django_filters import rest_framework as filters
+from django.db.models import Q, Count
+from django.shortcuts import get_object_or_404
 
 from .models import GalleryCategory, GalleryImage, GalleryAlbum
 from .serializers import (
-    GalleryCategorySerializer, GalleryImageSerializer, GalleryImageListSerializer,
-    GalleryAlbumSerializer, GalleryAlbumListSerializer
+    GalleryCategorySerializer,
+    GalleryAlbumSerializer,
+    GalleryImageSerializer,
+    GalleryImageCreateSerializer,
+    GalleryAlbumCreateSerializer,
 )
 
 
 class GalleryCategoryViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    ViewSet for gallery categories
-    """
+    """ViewSet for gallery categories"""
     queryset = GalleryCategory.objects.filter(is_active=True)
     serializer_class = GalleryCategorySerializer
     permission_classes = [permissions.AllowAny]
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['category_type', 'is_active']
     search_fields = ['name', 'description']
-    ordering = ['name']
-
-
-class GalleryImageViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for gallery images
-    """
-    queryset = GalleryImage.objects.filter(is_public=True)
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category', 'is_featured', 'event_date']
-    search_fields = ['title', 'description', 'event_name', 'tags', 'photographer']
-    ordering = ['-is_featured', '-display_order', '-created_at']
+    ordering_fields = ['name', 'display_order', 'created_at']
+    ordering = ['display_order', 'name']
     
-    def get_permissions(self):
-        """
-        Instantiates and returns the list of permissions that this view requires.
-        """
-        if self.action in ['list', 'retrieve']:
-            permission_classes = [permissions.AllowAny]
-        else:
-            permission_classes = [IsAuthenticated]
-        return [permission() for permission in permission_classes]
-    
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return GalleryImageListSerializer
-        return GalleryImageSerializer
-    
-    def get_queryset(self):
-        queryset = super().get_queryset()
+    @action(detail=True, methods=['get'])
+    def albums(self, request, pk=None):
+        """Get albums for a specific category"""
+        category = self.get_object()
+        albums = GalleryAlbum.objects.filter(
+            category=category, 
+            is_active=True, 
+            is_public=True
+        ).select_related('category')
         
-        # Filter by category slug if provided
-        category_slug = self.request.query_params.get('category_slug')
-        if category_slug:
-            queryset = queryset.filter(category__slug=category_slug)
-        
-        # Filter by tags if provided
-        tags = self.request.query_params.get('tags')
-        if tags:
-            tag_list = [tag.strip() for tag in tags.split(',')]
-            tag_query = Q()
-            for tag in tag_list:
-                tag_query |= Q(tags__icontains=tag)
-            queryset = queryset.filter(tag_query)
-        
-        return queryset
-    
-    def perform_create(self, serializer):
-        serializer.save(uploaded_by=self.request.user)
-    
-    def get_permissions(self):
-        """
-        Allow public access for viewing, require authentication for create/update/delete
-        """
-        if self.action in ['list', 'retrieve']:
-            return [permissions.AllowAny()]
-        else:
-            return [IsAuthenticated()]
-    
-    @action(detail=False, methods=['get'])
-    def featured(self, request):
-        """Get featured images"""
-        featured_images = self.get_queryset().filter(is_featured=True)[:12]
-        serializer = self.get_serializer(featured_images, many=True)
-        return Response(serializer.data)
-    
-    @action(detail=False, methods=['get'])
-    def recent(self, request):
-        """Get recent images"""
-        recent_images = self.get_queryset().order_by('-created_at')[:20]
-        serializer = self.get_serializer(recent_images, many=True)
+        serializer = GalleryAlbumSerializer(albums, many=True)
         return Response(serializer.data)
 
 
 class GalleryAlbumViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for gallery albums
-    """
-    queryset = GalleryAlbum.objects.filter(is_public=True)
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    """ViewSet for gallery albums"""
+    queryset = GalleryAlbum.objects.filter(is_active=True)
+    serializer_class = GalleryAlbumSerializer
+    permission_classes = [permissions.AllowAny]
+    filterset_fields = ['category', 'is_public', 'is_featured']
     search_fields = ['name', 'description', 'location']
+    ordering_fields = ['name', 'event_date', 'display_order', 'created_at']
     ordering = ['-is_featured', '-display_order', '-created_at']
-    lookup_field = 'slug'
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filter by public albums for non-authenticated users
+        if not self.request.user.is_authenticated:
+            queryset = queryset.filter(is_public=True)
+        return queryset.select_related('category', 'created_by')
     
     def get_serializer_class(self):
-        if self.action == 'list':
-            return GalleryAlbumListSerializer
+        if self.action == 'create':
+            return GalleryAlbumCreateSerializer
         return GalleryAlbumSerializer
     
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+    @action(detail=True, methods=['get'])
+    def images(self, request, pk=None):
+        """Get images for a specific album"""
+        album = self.get_object()
+        images = GalleryImage.objects.filter(
+            album=album, 
+            is_public=True
+        ).select_related('album', 'album__category')
+        
+        serializer = GalleryImageSerializer(images, many=True)
+        return Response(serializer.data)
+
+
+class GalleryImageFilter(filters.FilterSet):
+    """Filter for gallery images"""
+    category = filters.NumberFilter(field_name='album__category', lookup_expr='exact')
+    category_type = filters.CharFilter(field_name='album__category__category_type', lookup_expr='exact')
+    album = filters.NumberFilter(field_name='album', lookup_expr='exact')
+    event_date = filters.DateFilter(field_name='album__event_date', lookup_expr='exact')
+    event_date_range = filters.DateFromToRangeFilter(field_name='album__event_date')
     
-    def get_permissions(self):
-        """
-        Allow public access for viewing, require authentication for create/update/delete
-        """
-        if self.action in ['list', 'retrieve']:
-            return [permissions.AllowAny()]
-        else:
-            return [IsAuthenticated()]
+    class Meta:
+        model = GalleryImage
+        fields = {
+            'is_featured': ['exact'],
+            'is_public': ['exact'],
+            'photographer': ['icontains'],
+            'tags': ['icontains'],
+            'created_at': ['gte', 'lte'],
+        }
+
+
+class GalleryImageViewSet(viewsets.ModelViewSet):
+    """ViewSet for gallery images"""
+    queryset = GalleryImage.objects.all()
+    serializer_class = GalleryImageSerializer
+    permission_classes = [permissions.AllowAny]
+    filterset_class = GalleryImageFilter
+    search_fields = ['title', 'description', 'album__name', 'tags', 'photographer']
+    ordering_fields = ['title', 'display_order', 'created_at']
+    ordering = ['-is_featured', '-display_order', '-created_at']
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filter by public images for non-authenticated users
+        if not self.request.user.is_authenticated:
+            queryset = queryset.filter(is_public=True)
+        return queryset.select_related('album', 'album__category', 'uploaded_by')
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return GalleryImageCreateSerializer
+        return GalleryImageSerializer
     
     @action(detail=False, methods=['get'])
     def featured(self, request):
-        """Get featured albums"""
-        featured_albums = self.get_queryset().filter(is_featured=True)[:8]
-        serializer = self.get_serializer(featured_albums, many=True)
+        """Get featured images"""
+        images = self.get_queryset().filter(is_featured=True)
+        serializer = self.get_serializer(images, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def by_category(self, request):
+        """Get images grouped by category"""
+        categories = GalleryCategory.objects.filter(is_active=True)
+        result = []
+        
+        for category in categories:
+            images = self.get_queryset().filter(
+                album__category=category,
+                is_public=True
+            )[:10]  # Limit to 10 images per category
+            
+            serializer = self.get_serializer(images, many=True)
+            result.append({
+                'category': GalleryCategorySerializer(category).data,
+                'images': serializer.data
+            })
+        
+        return Response(result)
+    
+    @action(detail=False, methods=['get'])
+    def recent(self, request):
+        """Get recent images"""
+        images = self.get_queryset().filter(is_public=True)[:20]
+        serializer = self.get_serializer(images, many=True)
         return Response(serializer.data)

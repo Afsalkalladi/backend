@@ -1,180 +1,94 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from django.utils import timezone
-from django.contrib.admin import SimpleListFilter
+from django.urls import reverse
+from django.http import HttpResponseRedirect
+from django.contrib import messages
 from .models import Scheme, Subject, AcademicCategory, AcademicResource
 
 
-class SubjectSchemeFilter(SimpleListFilter):
-    """Custom filter for subjects by scheme"""
-    title = 'scheme'
-    parameter_name = 'subject_scheme'
-
-    def lookups(self, request, model_admin):
-        schemes = Scheme.objects.filter(is_active=True)
-        return [(scheme.id, f"{scheme.name} ({scheme.year})") for scheme in schemes]
-
-    def queryset(self, request, queryset):
-        if self.value():
-            return queryset.filter(subject__scheme__id=self.value())
-        return queryset
-
-
-class SubjectSemesterFilter(SimpleListFilter):
-    """Custom filter for subjects by semester"""
-    title = 'semester'
-    parameter_name = 'subject_semester'
-
-    def lookups(self, request, model_admin):
-        # Get all semesters that have subjects
-        semesters = Subject.objects.values_list('semester', flat=True).distinct().order_by('semester')
-        return [(sem, f"Semester {sem}") for sem in semesters]
-
-    def queryset(self, request, queryset):
-        if self.value():
-            return queryset.filter(subject__semester=self.value())
-        return queryset
-
-
-
 @admin.register(Scheme)
-class AcademicSchemeAdmin(admin.ModelAdmin):
-    list_display = ['year', 'name', 'is_active', 'subject_count', 'created_at']
-    list_filter = ['is_active', 'created_at']
-    search_fields = ['name', 'year']
-    readonly_fields = ['created_at', 'updated_at']
+class SchemeAdmin(admin.ModelAdmin):
+    list_display = ['name', 'year', 'is_active', 'created_at']
+    list_filter = ['year', 'is_active', 'created_at']
+    search_fields = ['name', 'description']
     list_editable = ['is_active']
-    
-    def subject_count(self, obj):
-        return obj.subjects.count()
-    subject_count.short_description = 'Subjects'
+    ordering = ['-year']
 
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ['code', 'name', 'scheme', 'semester', 'credits', 'is_active', 'resource_count']
-    list_filter = ['scheme', 'semester', 'credits', 'is_active']
-    search_fields = ['name', 'code']
-    readonly_fields = ['created_at', 'updated_at']
+    list_display = ['code', 'name', 'scheme', 'semester', 'credits', 'is_active']
+    list_filter = ['scheme', 'semester', 'is_active', 'created_at']
+    search_fields = ['code', 'name', 'scheme__name']
     list_editable = ['is_active']
-    
-    fieldsets = (
-        ('Basic Information', {
-            'fields': ('name', 'code', 'scheme', 'semester', 'credits')
-        }),
-        ('Status', {
-            'fields': ('is_active',)
-        }),
-        ('Metadata', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        })
-    )
-    
-    def resource_count(self, obj):
-        return obj.resources.filter(is_approved=True).count()
-    resource_count.short_description = 'Resources'
+    ordering = ['scheme__year', 'semester', 'code']
+
+
+# Hide AcademicCategory from admin since we only have 5 fixed categories
+# admin.site.unregister(AcademicCategory)
 
 
 @admin.register(AcademicResource)
 class AcademicResourceAdmin(admin.ModelAdmin):
-    list_display = [
-        'title', 'category', 'subject', 'uploaded_by', 'approval_status', 
-        'file_size_display', 'download_count', 'is_featured', 'created_at'
-    ]
-    list_filter = [
-        'category__category_type', 'category', 'subject', SubjectSchemeFilter, SubjectSemesterFilter,
-        'is_approved', 'is_featured', 'module_number', 'exam_type', 'created_at'
-    ]
-    search_fields = ['title', 'description', 'subject__name', 'subject__code', 'uploaded_by__username']
-    readonly_fields = [
-        'file_size', 'download_count', 'view_count', 'created_at', 
-        'updated_at', 'approved_at', 'file_info'
-    ]
-    list_editable = ['is_featured']
+    list_display = ['title', 'category', 'subject', 'scheme', 'is_approved', 'is_featured', 'uploaded_by', 'created_at', 'get_approval_status']
+    list_filter = ['category', 'subject__scheme', 'is_approved', 'is_featured', 'uploaded_by', 'created_at']
+    search_fields = ['title', 'description', 'subject__name', 'uploaded_by__username']
+    list_editable = ['is_approved', 'is_featured']
+    readonly_fields = ['uploaded_by', 'file_size', 'download_count', 'view_count', 'created_at', 'updated_at']
     date_hierarchy = 'created_at'
+    actions = ['approve_selected_resources', 'reject_selected_resources']
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('title', 'description', 'category')
-        }),
-        ('Subject Selection', {
-            'fields': ('subject',)
-        }),
-        ('File Upload', {
-            'fields': ('file',)
-        }),
-        ('Resource Details', {
-            'fields': ('module_number', 'exam_type', 'exam_year'),
-            'classes': ('collapse',)
-        }),
-        ('Approval & Status', {
-            'fields': ('is_approved', 'is_featured'),
-            'classes': ('collapse',)
+            'fields': ('title', 'description', 'category', 'subject')
         }),
         ('File Information', {
-            'fields': ('file_info', 'file_size', 'download_count', 'view_count'),
-            'classes': ('collapse',)
+            'fields': ('file', 'file_size')
+        }),
+        ('Resource Details', {
+            'fields': ('module_number', 'exam_type', 'exam_year', 'author', 'publisher', 'edition', 'isbn')
+        }),
+        ('Status & Statistics', {
+            'fields': ('is_approved', 'is_featured', 'is_active', 'download_count', 'view_count')
         }),
         ('Metadata', {
-            'fields': ('uploaded_by', 'created_at', 'updated_at', 'approved_at'),
+            'fields': ('uploaded_by', 'approved_by', 'approved_at', 'created_at', 'updated_at'),
             'classes': ('collapse',)
         })
     )
     
-    def get_form(self, request, obj=None, **kwargs):
-        """Customize the form to improve subject selection"""
-        form = super().get_form(request, obj, **kwargs)
-        
-        # Add help text for subject selection
-        if 'subject' in form.base_fields:
-            form.base_fields['subject'].help_text = (
-                'Tip: Use the list filters on the right to filter by Scheme and Semester '
-                'before selecting a subject to make finding the right subject easier.'
-            )
-            
-            # Group subjects by scheme and semester for better display
-            form.base_fields['subject'].queryset = Subject.objects.select_related('scheme').order_by(
-                'scheme__year', 'semester', 'name'
-            )
-        
-        return form
+    def scheme(self, obj):
+        """Show scheme in list display"""
+        return obj.subject.scheme.name if obj.subject else '-'
+    scheme.short_description = 'Scheme'
+    scheme.admin_order_field = 'subject__scheme__name'
     
-    def approval_status(self, obj):
+    def get_approval_status(self, obj):
+        """Show approval status with color coding"""
         if obj.is_approved:
-            return format_html(
-                '<span style="color: green;">✓ Approved</span><br><small>by {} on {}</small>',
-                obj.approved_by.get_full_name() if obj.approved_by else 'Unknown',
-                obj.approved_at.strftime('%Y-%m-%d') if obj.approved_at else 'Unknown'
-            )
+            return format_html('<span style="color: green;">✓ Approved</span>')
         else:
             return format_html('<span style="color: orange;">⏳ Pending</span>')
-    approval_status.short_description = 'Status'
+    get_approval_status.short_description = 'Status'
     
-    def file_size_display(self, obj):
-        return f"{obj.file_size_mb} MB" if obj.file_size_mb else "Unknown"
-    file_size_display.short_description = 'Size'
+    def get_queryset(self, request):
+        """Show unverified notes first"""
+        qs = super().get_queryset(request)
+        return qs.select_related('subject', 'subject__scheme', 'category', 'uploaded_by').order_by('is_approved', '-created_at')
     
-    def file_info(self, obj):
-        if obj.file:
-            return format_html(
-                '<strong>File:</strong> {}<br>'
-                '<strong>Size:</strong> {} MB<br>'
-                '<strong>URL:</strong> <a href="{}" target="_blank">View File</a>',
-                obj.file.name.split('/')[-1],
-                obj.file_size_mb,
-                obj.file.url
-            )
-        return "No file uploaded"
-    file_info.short_description = 'File Information'
+    def approve_selected_resources(self, request, queryset):
+        """Admin action to approve selected resources"""
+        updated = queryset.update(is_approved=True, approved_by=request.user)
+        self.message_user(request, f'{updated} resources have been approved.')
+    approve_selected_resources.short_description = "Approve selected resources"
+    
+    def reject_selected_resources(self, request, queryset):
+        """Admin action to reject selected resources"""
+        updated = queryset.update(is_approved=False, approved_by=None)
+        self.message_user(request, f'{updated} resources have been rejected.')
+    reject_selected_resources.short_description = "Reject selected resources"
     
     def save_model(self, request, obj, form, change):
         if not change:  # If creating new object
             obj.uploaded_by = request.user
-        
-        # Handle approval
-        if 'is_approved' in form.changed_data and obj.is_approved and not obj.approved_by:
-            obj.approved_by = request.user
-            obj.approved_at = timezone.now()
-        
         super().save_model(request, obj, form, change)

@@ -1,0 +1,175 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block extrahead %}{{ block.super }}
+<script type="text/javascript" src="{% url 'admin:jsi18n' %}"></script>
+{{ form.media }}
+<style>
+    .permission-group {
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+    }
+
+    .permission-group h3 {
+        margin-top: 0;
+        color: #333;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+    }
+
+    .permission-item {
+        margin: 8px 0;
+        padding: 8px;
+        background: #f9f9f9;
+        border-radius: 3px;
+    }
+
+    .permission-item input[type="checkbox"] {
+        margin-right: 10px;
+    }
+
+    .permission-item label {
+        font-weight: normal;
+        cursor: pointer;
+    }
+
+    .permission-description {
+        color: #666;
+        font-size: 0.9em;
+        margin-left: 25px;
+    }
+
+    .select-all-section {
+        margin-bottom: 15px;
+        padding: 10px;
+        background: #e7f3ff;
+        border-radius: 4px;
+    }
+
+    .select-all-section button {
+        margin-right: 10px;
+        padding: 5px 10px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .select-all-section button:hover {
+        background: #f0f0f0;
+    }
+
+    .submit-section {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f5f5f5;
+        border-radius: 4px;
+        text-align: center;
+    }
+
+    .submit-section input[type="submit"] {
+        padding: 10px 20px;
+        background: #79aec8;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .submit-section input[type="submit"]:hover {
+        background: #417690;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; <a href="{% url 'admin:accounts_user_changelist' %}">Users</a>
+    &rsaquo; Manage Permissions for {{ user.username }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>{{ title }}</h1>
+
+    <div class="module">
+        <h2>User Information</h2>
+        <p><strong>Username:</strong> {{ user.username }}</p>
+        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>Full Name:</strong> {{ user.get_full_name }}</p>
+        <p><strong>Groups:</strong> {% if user.groups.all %}{{ user.groups.all|join:", " }}{% else %}No groups{% endif
+            %}</p>
+        <p><strong>Staff Status:</strong> {% if user.is_staff %}Yes{% else %}No{% endif %}</p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="select-all-section">
+            <h3>Quick Actions</h3>
+            <button type="button" onclick="selectAll()">Select All</button>
+            <button type="button" onclick="deselectAll()">Deselect All</button>
+            <button type="button" onclick="selectByApp('academics')">Select Academics</button>
+            <button type="button" onclick="selectByApp('events')">Select Events</button>
+            <button type="button" onclick="selectByApp('projects')">Select Projects</button>
+            <button type="button" onclick="selectByApp('placements')">Select Placements</button>
+        </div>
+
+        <div class="permission-groups">
+            {% for content_type, permissions in permissions_by_type.items %}
+            <div class="permission-group">
+                <h3>{{ content_type.app_label|title }} - {{ content_type.model|title }}</h3>
+                {% for permission in permissions %}
+                <div class="permission-item">
+                    <input type="checkbox" name="permissions" value="{{ permission.pk }}" id="perm_{{ permission.pk }}"
+                        {% if permission.pk in user_permissions %}checked{% endif %}>
+                    <label for="perm_{{ permission.pk }}">
+                        <strong>{{ permission.name }}</strong>
+                        <div class="permission-description">
+                            {{ permission.content_type.app_label }}.{{ permission.content_type.model }}: {{
+                            permission.codename }}
+                        </div>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="submit-section">
+            <input type="submit" value="Save Permissions" />
+            <a href="{% url 'admin:accounts_user_changelist' %}" style="margin-left: 10px;">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    function selectAll() {
+        document.querySelectorAll('input[name="permissions"]').forEach(function (checkbox) {
+            checkbox.checked = true;
+        });
+    }
+
+    function deselectAll() {
+        document.querySelectorAll('input[name="permissions"]').forEach(function (checkbox) {
+            checkbox.checked = false;
+        });
+    }
+
+    function selectByApp(appName) {
+        document.querySelectorAll('input[name="permissions"]').forEach(function (checkbox) {
+            var label = checkbox.nextElementSibling;
+            var description = label.querySelector('.permission-description');
+            if (description && description.textContent.includes(appName + '.')) {
+                checkbox.checked = true;
+            }
+        });
+    }
+</script>
+{% endblock %}

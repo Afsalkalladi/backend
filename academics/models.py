@@ -61,6 +61,8 @@ class AcademicCategory(models.Model):
         ('notes', 'Notes'),
         ('textbook', 'Textbooks'),
         ('pyq', 'Previous Year Questions'),
+        ('regulations', 'Regulations'),
+        ('syllabus', 'Syllabus'),
     ]
     
     name = models.CharField(max_length=100)
@@ -82,7 +84,7 @@ class AcademicCategory(models.Model):
         return f"{self.get_category_type_display()}"
     
     def save(self, *args, **kwargs):
-        """Ensure only 3 categories exist"""
+        """Ensure only 5 categories exist"""
         if not self.pk:  # Only for new instances
             if self.category_type == 'notes':
                 self.name = 'Notes'
@@ -93,6 +95,12 @@ class AcademicCategory(models.Model):
             elif self.category_type == 'pyq':
                 self.name = 'Previous Year Questions'
                 self.slug = 'pyq'
+            elif self.category_type == 'regulations':
+                self.name = 'Regulations'
+                self.slug = 'regulations'
+            elif self.category_type == 'syllabus':
+                self.name = 'Syllabus'
+                self.slug = 'syllabus'
         super().save(*args, **kwargs)
 
 
