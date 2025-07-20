@@ -6,6 +6,21 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    buildFilter:
+      paths:
+        - requirements.txt
+        - Dockerfile
+        - .dockerignore
+        - eesa_backend/**
+        - accounts/**
+        - academics/**
+        - alumni/**
+        - careers/**
+        - events/**
+        - gallery/**
+        - placements/**
+        - projects/**
+        - manage.py
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"

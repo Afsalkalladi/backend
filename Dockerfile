@@ -14,7 +14,7 @@ RUN apt-get update \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install Python dependencies
+# Install Python dependencies (cache this layer)
 COPY requirements.txt /app/
 WORKDIR /app
 RUN pip install --upgrade pip && pip install -r requirements.txt
@@ -41,7 +41,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Set work directory
 WORKDIR /app
 
-# Copy project
+# Copy project (cache this layer separately)
 COPY . /app/
 
 # Change ownership to django user
@@ -50,14 +50,14 @@ RUN chown -R django:django /app
 # Switch to django user
 USER django
 
-# Collect static files
+# Collect static files (cache this layer)
 RUN python manage.py collectstatic --noinput
 
 # Expose port (will be overridden by Render)
 EXPOSE 8000
 
 # Create startup script
-RUN echo '#!/bin/bash\npython manage.py migrate\nexec gunicorn eesa_backend.wsgi:application --bind 0.0.0.0:${PORT:-8000}' > /app/start.sh && chmod +x /app/start.sh
+RUN echo '#!/bin/bash\npython manage.py migrate --noinput\nexec gunicorn eesa_backend.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120' > /app/start.sh && chmod +x /app/start.sh
 
 # Start Gunicorn server
 CMD ["/app/start.sh"] 

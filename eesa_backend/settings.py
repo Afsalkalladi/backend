@@ -21,17 +21,26 @@ if ALLOWED_HOSTS_STR == '*':
     ALLOWED_HOSTS = ['*']
 else:
     ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_STR.split(',') if host.strip()]
-    
-# Add common production hosts
+
+# Add common production hosts and specific domains
 if not DEBUG:
     ALLOWED_HOSTS.extend([
         '*.onrender.com',
+        'backend-3nct.onrender.com',  # Your specific domain
         '*.railway.app',
         '*.herokuapp.com',
         'localhost',
         '127.0.0.1',
         '0.0.0.0'
     ])
+    # Remove duplicates while preserving order
+    ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS))
+    
+    # Debug ALLOWED_HOSTS in production (only if needed)
+    if os.environ.get('DEBUG_SETTINGS', 'False').lower() == 'true':
+        print(f"🔧 ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+        print(f"🔧 DEBUG: {DEBUG}")
+        print(f"🔧 SECRET_KEY: {'SET' if SECRET_KEY else 'MISSING'}")
 
 # Application definition
 INSTALLED_APPS = [
@@ -89,17 +98,31 @@ WSGI_APPLICATION = 'eesa_backend.wsgi.application'
 # Database configuration
 if not DEBUG:
     # Production - Use individual DB settings (PostgreSQL)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME', 'postgres'),
-            'USER': os.environ.get('DB_USER', 'postgres'),
-            'PASSWORD': os.environ.get('DB_PASSWORD'),
-            'HOST': os.environ.get('DB_HOST'),
-            'PORT': os.environ.get('DB_PORT', '5432'),
+    db_name = os.environ.get('DB_NAME', 'postgres')
+    db_user = os.environ.get('DB_USER', 'postgres')
+    db_password = os.environ.get('DB_PASSWORD')
+    db_host = os.environ.get('DB_HOST')
+    db_port = os.environ.get('DB_PORT', '5432')
+    
+    # Use PostgreSQL if all variables are set, otherwise SQLite
+    if all([db_name, db_user, db_password, db_host]):
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': db_name,
+                'USER': db_user,
+                'PASSWORD': db_password,
+                'HOST': db_host,
+                'PORT': db_port,
+            }
         }
-    }
-    print("✅ Using PostgreSQL database for production")
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
 else:
     # Development - SQLite
     DATABASES = {
@@ -108,7 +131,6 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-    print("✅ Using SQLite database for development")
 
 # File storage configuration
 if DEBUG:
