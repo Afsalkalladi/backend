@@ -88,27 +88,27 @@ git commit -m "Deploy latest changes"
 git push origin main
 ```
 
-### **Environment Variables (Already Set)**
+### **Environment Variables Setup**
 ```env
-# Database (Supabase PostgreSQL)
-DB_HOST=aws-0-us-east-2.pooler.supabase.com
-DB_NAME=postgres
-DB_PASSWORD=nogcuQ-bewxu3-haksek
-DB_PORT=6543
-DB_USER=postgres.xqpowzislnyvwvjyfhwy
+# Database (PostgreSQL)
+DB_HOST=your-database-host
+DB_NAME=your-database-name
+DB_PASSWORD=your-database-password
+DB_PORT=5432
+DB_USER=your-database-user
 
 # Security
 DEBUG=False
-SECRET_KEY="django-insecure-zpdpc&fkd@i+9%j6sqft4es&=h4p=_vl+sgwjsh5df+h$3e!of"
+SECRET_KEY=your-secret-key
 ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,*.onrender.com
 
 # Cloudinary Storage
-CLOUDINARY_API_KEY=387951667376247
-CLOUDINARY_API_SECRET=RwLVyrMUVbVZWYbEC2b5Vj7gXDA
-CLOUDINARY_CLOUD_NAME=dts8lenwq
+CLOUDINARY_API_KEY=your-cloudinary-api-key
+CLOUDINARY_API_SECRET=your-cloudinary-api-secret
+CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
 
 # CORS
-CORS_ALLOWED_ORIGINS=https://forntend-nine.vercel.app,https://forntend-ceh1ty1ij-afsalkalladis-projects.vercel.app,http://localhost:3000
+CORS_ALLOWED_ORIGINS=https://your-frontend-domain.com,http://localhost:3000
 ```
 
 ### **Other Platforms**

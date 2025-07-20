@@ -24,7 +24,7 @@ class Alumni(models.Model):
     scheme = models.PositiveIntegerField(blank=True, null=True, help_text="Academic scheme year (e.g., 2019, 2021)")
     year_of_joining = models.PositiveIntegerField(help_text="Year joined the institution")
     year_of_passout = models.PositiveIntegerField(help_text="Year of graduation")
-    department = models.CharField(max_length=100, default="Electronics Engineering", editable=False)
+    department = models.CharField(max_length=100, default="Electrical and Electronics Engineering", editable=False)
     specialization = models.CharField(max_length=100, blank=True, null=True)
     cgpa = models.DecimalField(max_digits=4, decimal_places=2, blank=True, null=True,
                               validators=[MinValueValidator(0.0), MaxValueValidator(10.0)])

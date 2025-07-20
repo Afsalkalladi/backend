@@ -251,7 +251,7 @@ class AlumniViewSet(viewsets.ModelViewSet):
         # Add sample row
         sample_row = [
             'John Doe', 'john.doe@example.com', '9876543210', 'STU001',
-            '2019', '2019', '2023', 'Electronics Engineering',
+            '2019', '2019', '2023', 'Electrical and Electronics Engineering',
             'VLSI Design', '8.5', 'Software Engineer', 'Tech Company',
             'Bangalore', 'employed', 'https://linkedin.com/in/johndoe'
         ]
