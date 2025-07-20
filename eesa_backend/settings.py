@@ -41,6 +41,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add WhiteNoise for static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -54,7 +55,7 @@ ROOT_URLCONF = 'eesa_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -87,17 +88,26 @@ if DEBUG:
     
     print("✅ Using SQLite database and local file storage")
 else:
-    # Production - Supabase + Cloudinary
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME'),
-            'USER': os.environ.get('DB_USER'),
-            'PASSWORD': os.environ.get('DB_PASSWORD'),
-            'HOST': os.environ.get('DB_HOST'),
-            'PORT': os.environ.get('DB_PORT', '5432'),
+    # Production - PostgreSQL + Cloudinary
+    import dj_database_url
+    
+    # Use DATABASE_URL if available, otherwise use individual DB settings
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    if DATABASE_URL:
+        DATABASES = {
+            'default': dj_database_url.parse(DATABASE_URL)
         }
-    }
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': os.environ.get('DB_NAME'),
+                'USER': os.environ.get('DB_USER'),
+                'PASSWORD': os.environ.get('DB_PASSWORD'),
+                'HOST': os.environ.get('DB_HOST'),
+                'PORT': os.environ.get('DB_PORT', '5432'),
+            }
+        }
     
     # Cloudinary storage
     CLOUDINARY_STORAGE = {
@@ -109,7 +119,7 @@ else:
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
     STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
     
-    print("✅ Using Supabase database and Cloudinary storage")
+    print("✅ Using PostgreSQL database and Cloudinary storage")
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
