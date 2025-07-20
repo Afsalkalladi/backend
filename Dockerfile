@@ -15,7 +15,7 @@ RUN apt-get update \
 
 # Install Python dependencies
 COPY requirements.txt /app/
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install --root-user-action=ignore -r requirements.txt
 
 # Copy project
 COPY . /app/

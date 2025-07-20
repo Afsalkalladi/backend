@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
 from django.contrib.admin import SimpleListFilter
-from .models import Scheme, Subject, AcademicCategory, AcademicResource, Note
+from .models import Scheme, Subject, AcademicCategory, AcademicResource
 
 
 class SubjectSchemeFilter(SimpleListFilter):
@@ -83,7 +83,7 @@ class AcademicResourceAdmin(admin.ModelAdmin):
         'file_size_display', 'download_count', 'is_featured', 'created_at'
     ]
     list_filter = [
-        'category__category_type', 'category', SubjectSchemeFilter, SubjectSemesterFilter,
+        'category__category_type', 'category', 'subject', SubjectSchemeFilter, SubjectSemesterFilter,
         'is_approved', 'is_featured', 'module_number', 'exam_type', 'created_at'
     ]
     search_fields = ['title', 'description', 'subject__name', 'subject__code', 'uploaded_by__username']
