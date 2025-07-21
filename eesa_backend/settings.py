@@ -26,7 +26,7 @@ else:
 if not DEBUG:
     ALLOWED_HOSTS.extend([
         '*.onrender.com',
-        'backend-3nct.onrender.com',  # Your specific domain
+        'eesabackend.onrender.com',  # Your specific domain
         '*.railway.app',
         '*.herokuapp.com',
         'localhost',
@@ -209,13 +209,42 @@ REST_FRAMEWORK = {
 # CORS settings
 import os
 
-CORS_ALLOWED_ORIGINS = [
-    origin.strip() for origin in os.environ.get('CORS_ALLOWED_ORIGINS',
-        'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173'
-    ).split(',') if origin.strip()
+# CORS Origins based on environment
+if DEBUG:
+    # Development CORS settings from environment or empty list
+    dev_cors = os.environ.get('DEV_CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173')
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in dev_cors.split(',') if origin.strip()]
+else:
+    # Production CORS settings - must be set in environment
+    cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+    
+    # Debug CORS settings in production (only if needed)
+    if os.environ.get('DEBUG_SETTINGS', 'False').lower() == 'true':
+        print(f"🔧 CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
+
+# Additional CORS settings
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
 ]
 
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 # Admin site customization
 ADMIN_SITE_HEADER = "EESA Backend Administration"
